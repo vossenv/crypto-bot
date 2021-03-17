@@ -39,7 +39,10 @@ setup(name='crypto-bot',
       # },
       install_requires=[
           'discord',
-         # 'dotenv',
+          'pyyaml',
+          'schema',
+          'Flask',
+          'Werkzeug',
       ],
       extras_require={
           'setup': setup_deps,

@@ -1,6 +1,5 @@
-
 import asyncio
-import os
+import logging
 import random
 import threading
 import time
@@ -8,14 +7,14 @@ import time
 import discord
 from discord.ext.commands import Bot
 
-TOKEN = os.environ['TOKEN']
-
-
 class CryptoBot(Bot):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, coin, *args, **kwargs):
         super(CryptoBot, self).__init__(*args, **kwargs)
+        self.coin = coin
         self.memberships = []
+        self.logger = logging.getLogger("{} bot".format(coin))
+        self.logger.info("Starting bot...")
 
     async def ready(self):
         threading.Thread(target=self.update_memberships).start()
@@ -39,12 +38,12 @@ class CryptoBot(Bot):
             time.sleep(60)
 
 
-def create_bot():
-    bot = CryptoBot(command_prefix='!')
+def create_bot(coin):
+    bot = CryptoBot(command_prefix='!', coin=coin)
 
     @bot.event
     async def on_ready():
-        print("READY")
+        bot.logger.info("Ready!")
         await bot.ready()
 
     @bot.command(name='99', help='Responds with a random quote from Brooklyn 99')
@@ -62,7 +61,3 @@ def create_bot():
         await ctx.send(response)
 
     return bot
-
-
-x = create_bot()
-x.run(TOKEN)
