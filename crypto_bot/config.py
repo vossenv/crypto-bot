@@ -26,6 +26,15 @@ def load_config(path):
     with open(path) as f:
         cfg = yaml.safe_load(f) or {}
     _validate(cfg)
+
+    for val in os.environ.get('bots').split(','):
+        if not val.strip():
+            continue
+        t = val.split("=")
+        if len(t) < 2:
+            raise ConfigValidationError("Improper bot config: {}".format(val))
+        cfg['bots'].append({'coin: ': t[0], 'token': t[1]})
+
     return cfg
 
 
@@ -52,3 +61,13 @@ def init_logger(config):
         data['loggers']['']['level'] = level.upper()
         logging.config.dictConfig(data)
         return logging.getLogger()
+
+def env_overrides(self, key="cfg."):
+    overrides = {}
+    reduced = {decode(k, True): decode(v, True) for k, v in os.environ._data.items() if decode(k, True)}
+    reduced = {k.lstrip(key): v for k, v in reduced.items() if k.startswith(key)}
+
+    for k, v in reduced.items():
+        entry = Config.make_dict(k.split("."), v)
+        Config.merge_dict(overrides, entry)
+    Config.merge_dict(self.data, overrides)

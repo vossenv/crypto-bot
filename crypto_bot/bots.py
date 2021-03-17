@@ -43,7 +43,7 @@ def create_bot(coin):
 
     @bot.event
     async def on_ready():
-        bot.logger.info("Ready!")
+        bot.logger.info("{} is ready!".format(bot.coin))
         await bot.ready()
 
     @bot.command(name='99', help='Responds with a random quote from Brooklyn 99')
