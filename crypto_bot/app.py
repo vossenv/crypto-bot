@@ -1,4 +1,5 @@
 # Init application
+import asyncio
 import glob
 import os
 import sys
@@ -22,9 +23,11 @@ logger = init_logger(config.get('logging'))
 logger.info("Config loaded")
 logger.info("Start Bots")
 
-for b in config['bots']:
-    bot = create_bot(b['coin'])
-    threading.Thread(target=bot.run, args=(b['token'],)).start()
+loop = asyncio.get_event_loop()
+for i, b in enumerate(config['bots']):
+    bot = create_bot(b['coin'], i + 1)
+    loop.create_task(bot.start(b['token']))
+threading.Thread(target=loop.run_forever).start()
 
 application = Flask(__name__,
                     template_folder=get_resource('templates'),
