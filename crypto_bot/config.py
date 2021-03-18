@@ -17,6 +17,7 @@ def config_schema() -> Schema:
             'token': str,
             'coin': str
         }],
+        Optional('command_roles'): [str],
         Optional('logging'): {
             'level': Or('info', 'debug', 'INFO', 'DEBUG')
         }})
@@ -27,14 +28,19 @@ def load_config(path):
         cfg = yaml.safe_load(f) or {}
     _validate(cfg)
 
-    for val in os.environ.get('bots').split(','):
-        if not val.strip():
-            continue
-        t = val.split("=")
-        if len(t) < 2:
-            raise ConfigValidationError("Improper bot config: {}".format(val))
-        cfg['bots'].append({'coin: ': t[0], 'token': t[1]})
-
+    botenv = os.environ.get('BOTS')
+    if botenv:
+        for val in botenv.split(','):
+            if not val.strip():
+                continue
+            t = val.split("=")
+            if len(t) < 2:
+                raise ConfigValidationError("Improper bot config: {}".format(val))
+            cfg['bots'].append({'coin: ': t[0], 'token': t[1]})
+    cmd = os.environ.get('COMMAND_ROLES').split(',')
+    if cmd:
+        cfg['command_roles'].extend(cmd)
+    cfg['command_roles'] = set(cfg['command_roles'])
     return cfg
 
 
@@ -61,13 +67,3 @@ def init_logger(config):
         data['loggers']['']['level'] = level.upper()
         logging.config.dictConfig(data)
         return logging.getLogger()
-
-def env_overrides(self, key="cfg."):
-    overrides = {}
-    reduced = {decode(k, True): decode(v, True) for k, v in os.environ._data.items() if decode(k, True)}
-    reduced = {k.lstrip(key): v for k, v in reduced.items() if k.startswith(key)}
-
-    for k, v in reduced.items():
-        entry = Config.make_dict(k.split("."), v)
-        Config.merge_dict(overrides, entry)
-    Config.merge_dict(self.data, overrides)

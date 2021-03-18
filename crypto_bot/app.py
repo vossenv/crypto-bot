@@ -18,14 +18,14 @@ except:
     cfg = "config.yml"
 
 config = load_config(cfg)
-
+roles = config.get('command_roles') or []
 logger = init_logger(config.get('logging'))
 logger.info("Config loaded")
 logger.info("Start Bots")
 
 loop = asyncio.get_event_loop()
 for i, b in enumerate(config['bots']):
-    bot = create_bot(b['coin'], i + 1)
+    bot = create_bot(b['coin'], i + 1, roles)
     loop.create_task(bot.start(b['token']))
 threading.Thread(target=loop.run_forever).start()
 

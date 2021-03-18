@@ -6,7 +6,7 @@ import time
 from datetime import datetime
 
 import discord
-from discord.ext.commands import Bot
+from discord.ext.commands import Bot, MissingRequiredArgument
 
 
 class CoinAssociation:
@@ -22,10 +22,11 @@ class CoinAssociation:
 
 class CryptoBot(Bot):
 
-    def __init__(self, coin, chat_id, *args, **kwargs):
+    def __init__(self, coin, chat_id, command_roles, *args, **kwargs):
         super(CryptoBot, self).__init__(*args, **kwargs)
         self.coin = coin.upper()
         self.chat_id = chat_id
+        self.command_roles = {c.lower() for c in command_roles}
         self.associations = {}
         self.logger = logging.getLogger("{} bot".format(coin))
         self.logger.info("Starting bot...")
@@ -60,20 +61,32 @@ class CryptoBot(Bot):
             time.sleep(60)
 
 
-def create_bot(coin, chat_id):
-    bot = CryptoBot(command_prefix="!{}".format(chat_id), coin=coin, chat_id=chat_id)
+def create_bot(coin, chat_id, command_roles):
+    bot = CryptoBot(command_prefix="!{} ".format(chat_id), coin=coin, chat_id=chat_id, command_roles=command_roles)
 
     @bot.event
     async def on_ready():
         bot.logger.info("{} is ready!".format(bot.coin))
         await bot.ready()
 
-    @bot.command(name='coin', help='Sets a specific coin by code')
+    @bot.command(name='set', help='Sets a specific coin by code')
     async def set_coin(ctx, shortcode):
+        if not ctx.author.id == ctx.guild.owner_id:
+            return
+        elif not {r.name.lstrip('@').lower() for r in ctx.author.roles} & bot.command_roles:
+            return
         try:
             bot.set_coin(ctx.guild.id, shortcode)
             await ctx.send("Set bot {0} to {1} successfully!".format(bot.chat_id, shortcode))
         except:
             await ctx.send("Error setting shortcode {}!".format(shortcode))
+
+    @set_coin.error
+    async def on_error(ctx, error):
+        if isinstance(error, MissingRequiredArgument):
+            await ctx.send("Missing required parameter: coin name - EG: !1 SET BTC")
+        else:
+            bot.logger.error("{} - {}".format(type(error), error.args[0]))
+            raise error
 
     return bot
