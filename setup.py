@@ -43,6 +43,7 @@ setup(name='crypto-bot',
           'schema',
           'Flask',
           'Werkzeug',
+          'requests'
       ],
       extras_require={
           'setup': setup_deps,
