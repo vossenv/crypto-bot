@@ -1,14 +1,10 @@
 
-connection:
-  base_url: https://api.coingecko.com/api/v3
-  update: 5
-
+api_url: https://api.coingecko.com/api/v3
+log_level: info
 
 bots:
   - token: TOKEN
     coin: btc
 
-
-#logging:
-#  filename: process.log
-#  level: debug
+command_roles:
+  - everyone

@@ -34,8 +34,9 @@ class CryptoBot(Bot):
     async def set_coin(self, guild, coin):
         coin = str(coin).lower()
         if not self.connector.coins.get(coin):
-            raise discord.DiscordException("Invalid coin selection: {}".format(coin))
+            raise discord.DiscordException("Invalid coin selection: {}".format(coin.upper()))
         self.associations[guild].update(coin)
+        await self.update()
 
     async def ready(self):
         threading.Thread(target=self.update_memberships).start()
@@ -44,16 +45,23 @@ class CryptoBot(Bot):
     async def status_loop(self):
 
         while True:
-            for g, a in self.associations.items():
-                # if not a.image:
-                #     a.image = await self.connector.get_icon(a.coin)
-                # await self.user.edit(avatar=a.image)
-                price, perc = await self.connector.get_ticker(a.coin)
-                dir = "↑" if perc >= 0 else "↓"
-                await a.membership.edit(nick="!{0} {1} {2}".format(self.chat_id, a.coin, price))
-                act = discord.Activity(type=discord.ActivityType.watching, name="{0} % {1}".format(perc, dir))
-                await self.change_presence(status=discord.Status.online, activity=act)
-            await asyncio.sleep(2)
+            try:
+                await self.update()
+                await asyncio.sleep(2)
+            except Exception as e:
+                self.logger.error(e)
+
+    async def update(self):
+        for g, a in self.associations.items():
+            # if not a.image:
+            #     a.image = await self.connector.get_icon(a.coin)
+            #     await edit_server()
+            # await self.user.edit(avatar=None)
+            price, perc = await self.connector.get_ticker(a.coin)
+            dir = "↑" if perc >= 0 else "↓"
+            await a.membership.edit(nick="!{0} {1} {2}".format(self.chat_id, a.coin, price))
+            act = discord.Activity(type=discord.ActivityType.watching, name="{0} % {1}".format(perc, dir))
+            await self.change_presence(status=discord.Status.online, activity=act)
 
     def update_memberships(self):
         while True:

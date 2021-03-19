@@ -13,22 +13,21 @@ from crypto_bot.connector import ApiConnector
 from crypto_bot.error import ApiError
 from crypto_bot.resources import get_resource
 
+print("X")
+
 try:
     cfg = sys.argv[1]
 except:
-    cfg = "config.yml"
+    cfg = None
 
 config = load_config(cfg)
-roles = config.get('command_roles') or []
-logger = init_logger(config.get('logging'))
+logger = init_logger(config['log_level'])
 logger.info("Config loaded")
-
-connector = ApiConnector(config['connection']['base_url'])
-
+connector = ApiConnector(config['api_url'])
 logger.info("Start Bots")
 loop = asyncio.get_event_loop()
 for i, b in enumerate(config['bots']):
-    bot = create_bot(b['coin'], str(i + 1), roles, connector)
+    bot = create_bot(b['coin'], str(i + 1), config['command_roles'], connector)
     loop.create_task(bot.start(b['token']))
 threading.Thread(target=loop.run_forever).start()
 

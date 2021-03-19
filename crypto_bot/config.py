@@ -2,33 +2,38 @@ import logging.config
 import os
 
 import yaml
-from schema import Schema, Optional, Or
+from schema import Schema, Or
 
 from crypto_bot.resources import get_resource
+
+config_defaults = {
+    'api_url': 'https://api.coingecko.com/api/v3',
+    'log_level': 'INFO',
+    'bots': [],
+    'command_roles': ['everyone']
+}
 
 
 def config_schema() -> Schema:
     return Schema({
-        'connection': {
-            'base_url': str,
-            'update': int
-        },
+        'api_url': str,
+        'log_level': Or('info', 'debug', 'INFO', 'DEBUG'),
         'bots': [{
             'token': str,
             'coin': str
         }],
-        Optional('command_roles'): [str],
-        Optional('logging'): {
-            'level': Or('info', 'debug', 'INFO', 'DEBUG')
-        }})
+        'command_roles': Or([str], {str})
+    })
 
 
 def load_config(path):
-    with open(path) as f:
-        cfg = yaml.safe_load(f) or {}
-    _validate(cfg)
+    cfg = config_defaults
+    if path:
+        with open(path) as f:
+            cfg.update(yaml.safe_load(f))
 
-    botenv = os.environ.get('BOTS')
+    envs = {decode(k, True): decode(v) for k, v in os.environ._data.items() if decode(k, True)}
+    botenv = envs.get('bots')
     if botenv:
         for val in botenv.split(','):
             if not val.strip():
@@ -36,11 +41,18 @@ def load_config(path):
             t = val.split("=")
             if len(t) < 2:
                 raise ConfigValidationError("Improper bot config: {}".format(val))
-            cfg['bots'].append({'coin: ': t[0], 'token': t[1]})
-    cmd = os.environ.get('COMMAND_ROLES').split(',')
-    if cmd:
-        cfg['command_roles'].extend(cmd)
-    cfg['command_roles'] = set(cfg['command_roles'])
+            cfg['bots'].append({'coin': t[0], 'token': t[1]})
+
+    for k in cfg:
+        if k == 'bots':
+            continue
+        v = envs.get(k)
+        if v:
+            cfg[k] = envs[k]
+    if isinstance(cfg['command_roles'], str):
+        cfg['command_roles'] = cfg['command_roles'].split(',')
+
+    _validate(cfg)
     return cfg
 
 
@@ -57,11 +69,21 @@ class ConfigValidationError(Exception):
         super(ConfigValidationError, self).__init__(message)
 
 
-def init_logger(config):
+def decode(text, lower=False):
+    if not text:
+        return
+    try:
+        text = text.decode()
+    except:
+        pass
+
+    text = str(text).strip()
+    return text.lower() if lower else text
+
+
+def init_logger(level):
     if not os.path.exists("logs"):
         os.mkdir("logs")
-    config = config or {}
-    level = config.get('level') or 'INFO'
     with open(get_resource("logger_config.yaml")) as cfg:
         data = yaml.safe_load(cfg)
         data['loggers']['']['level'] = level.upper()
