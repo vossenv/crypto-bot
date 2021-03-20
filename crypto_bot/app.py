@@ -18,6 +18,7 @@ try:
 except:
     cfg = None
 
+bots = []
 config = load_config(cfg)
 logger = init_logger(config['log_level'])
 logger.info("Config loaded")
@@ -27,12 +28,12 @@ loop = asyncio.get_event_loop()
 for i, b in enumerate(config['bots']):
     bot = create_bot(b['coin'], str(i + 1), config['command_roles'], connector)
     loop.create_task(bot.start(b['token']))
+    bots.append(bot)
 threading.Thread(target=loop.run_forever).start()
 
 application = Flask(__name__,
                     template_folder=get_resource('templates'),
                     static_folder=get_resource('static'))
-
 
 @application.route('/', methods=['GET'])
 def home():
@@ -43,6 +44,10 @@ def home():
 def get_server_logs():
     files = glob.glob(os.path.join('logs', "*.log"))
     return jsonify([f.split(os.sep)[-1] for f in files])
+
+@application.route('/bots', methods=['GET'])
+def get_bots():
+    return jsonify({b.user.name: b.describe() for b in bots})
 
 
 @application.route('/logs/<filename>', methods=['GET'])

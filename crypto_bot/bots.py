@@ -2,9 +2,9 @@ import asyncio
 import logging
 import threading
 import time
+from random import random
 
 import discord
-from discord.ext import commands
 from discord.ext.commands import Bot, MissingRequiredArgument
 
 
@@ -77,14 +77,12 @@ class CryptoBot(Bot):
                     self.associations[g.id] = CoinAssociation(self.coin, m[0])
             time.sleep(60)
 
+    def describe(self):
+        data = {}
+        for a in self.associations.values():
+            data[a.membership.guild.name] = a.membership.nick
+        return data
 
-# class MyCog(commands.Cog):
-#    """Cog description"""
-#
-#     @commands.command()
-#     async def ping(self, ctx):
-#         """Command description"""
-#         await ctx.send("Pong!")
 
 def create_bot(coin, chat_id, command_roles, connector):
     bot = CryptoBot(command_prefix="!{} ".format(chat_id),
@@ -99,7 +97,14 @@ def create_bot(coin, chat_id, command_roles, connector):
         bot.logger.info("{} is ready!".format(bot.coin))
         await bot.ready()
 
-    @bot.command(name='set',  help='Sets a specific coin by symbol. Usage: ![#] set DOGE - # indicates bot number')
+    @bot.command(name='feed', help='Get some soup')
+    async def feed(ctx):
+        if random() >= 0.7:
+            await ctx.send("You may eat today {}, Qapla'!".format(ctx.author.name))
+        else:
+            await ctx.send("No soup for you!")
+
+    @bot.command(name='set', help='Sets a specific coin by symbol. Usage: ![#] set DOGE - # indicates bot number')
     async def set_coin(ctx, symbol):
         if not ctx.author.id == ctx.guild.owner_id and \
                 not {r.name.lstrip('@').lower() for r in ctx.author.roles} & bot.command_roles:

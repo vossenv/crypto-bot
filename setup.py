@@ -43,5 +43,10 @@ setup(name='crypto-bot',
       extras_require={
           'setup': setup_deps,
       },
+      # entry_points={
+      #     'console_scripts': [
+      #         'crypto_bot = crypto_bot.app',
+      #     ]
+      # },
       setup_requires=setup_deps,
       )

@@ -6,6 +6,7 @@ else
 	RM := rm -rf
 endif
 
+
 wheel:
 	make cleandir
 	python setup.py bdist_wheel
@@ -15,4 +16,4 @@ cleandir:
 
 deploy:
 	make wheel
-	twine upload -r dev dist/*
+	twine upload dist/*

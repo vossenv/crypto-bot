@@ -1,0 +1,13 @@
+.eggs
+crypto_bot/logs
+var
+
+.gitignore
+README.md
+env.*
+devops
+docker-compose.yml
+Makefile
+*.ps1
+*.txt
+
