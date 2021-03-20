@@ -42,7 +42,8 @@ def load_config(path):
             if len(t) < 2:
                 raise ConfigValidationError("Improper bot config: {}".format(val))
             cfg['bots'].append({'coin': t[0], 'token': t[1]})
-
+    if not cfg['bots']:
+        raise AssertionError("No bots found!")
     for k in cfg:
         if k == 'bots':
             continue

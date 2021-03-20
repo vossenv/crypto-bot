@@ -4,6 +4,7 @@ import threading
 import time
 
 import discord
+from discord.ext import commands
 from discord.ext.commands import Bot, MissingRequiredArgument
 
 
@@ -77,6 +78,14 @@ class CryptoBot(Bot):
             time.sleep(60)
 
 
+# class MyCog(commands.Cog):
+#    """Cog description"""
+#
+#     @commands.command()
+#     async def ping(self, ctx):
+#         """Command description"""
+#         await ctx.send("Pong!")
+
 def create_bot(coin, chat_id, command_roles, connector):
     bot = CryptoBot(command_prefix="!{} ".format(chat_id),
                     coin=coin,
@@ -90,7 +99,7 @@ def create_bot(coin, chat_id, command_roles, connector):
         bot.logger.info("{} is ready!".format(bot.coin))
         await bot.ready()
 
-    @bot.command(name='set',  help='Sets a specific coin by code')
+    @bot.command(name='set',  help='Sets a specific coin by symbol. Usage: ![#] set DOGE - # indicates bot number')
     async def set_coin(ctx, symbol):
         if not ctx.author.id == ctx.guild.owner_id and \
                 not {r.name.lstrip('@').lower() for r in ctx.author.roles} & bot.command_roles:
@@ -101,7 +110,7 @@ def create_bot(coin, chat_id, command_roles, connector):
         except discord.DiscordException as e:
             await ctx.send("Error: {}".format(e))
 
-    @bot.command(name='price', help='Get a price')
+    @bot.command(name='price', help='Get a price. Usage: 1[#] price DOGE - # indicates bot number')
     async def get_price(ctx, symbol):
         try:
             s = await bot.connector.get_ticker(symbol)

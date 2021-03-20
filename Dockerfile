@@ -8,3 +8,7 @@ RUN pip install .
 
 EXPOSE 8033
 CMD [ "python", "/app/crypto_bot/app.py" ]
+
+
+
+

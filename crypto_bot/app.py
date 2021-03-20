@@ -13,8 +13,6 @@ from crypto_bot.connector import ApiConnector
 from crypto_bot.error import ApiError
 from crypto_bot.resources import get_resource
 
-print("X")
-
 try:
     cfg = sys.argv[1]
 except:
