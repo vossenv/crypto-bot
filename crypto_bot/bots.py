@@ -48,11 +48,8 @@ class CryptoBot(Bot):
     async def status_loop(self):
 
         while True:
-            try:
                 await self.update()
                 await asyncio.sleep(6)
-            except Exception as e:
-                self.logger.error(e)
 
     async def update(self):
         for g, a in self.associations.items():
@@ -60,11 +57,14 @@ class CryptoBot(Bot):
             #     a.image = await self.connector.get_icon(a.coin)
             #     await edit_server()
             # await self.user.edit(avatar=None)
-            price, perc = await self.connector.get_ticker(a.coin)
-            dir = ("↑" if perc >= 0 else "↓") if isinstance(perc, float) else ""
-            await a.membership.edit(nick="!{0} {1} {2}".format(self.chat_id, a.coin, price))
-            act = discord.Activity(type=discord.ActivityType.watching, name="{0} % {1}".format(perc, dir))
-            await self.change_presence(status=discord.Status.online, activity=act)
+            try:
+                price, perc = await self.connector.get_ticker(a.coin)
+                dir = ("↑" if perc >= 0 else "↓") if isinstance(perc, float) else ""
+                await a.membership.edit(nick="!{0} {1} {2}".format(self.chat_id, a.coin, price))
+                act = discord.Activity(type=discord.ActivityType.watching, name="{0} % {1}".format(perc, dir))
+                await self.change_presence(status=discord.Status.online, activity=act)
+            except Exception as e:
+                self.logger.error(e)
 
     def update_memberships(self):
         while True:
@@ -87,7 +87,7 @@ class CryptoBot(Bot):
 
 
 def create_bot(coin, chat_id, command_roles, connector):
-    bot = CryptoBot(command_prefix="!{} ".format(chat_id),
+    bot = CryptoBot(command_prefix="!{} ".format(chat_id.lstrip("0")),
                     coin=coin,
                     chat_id=chat_id,
                     command_roles=command_roles,
@@ -113,7 +113,7 @@ def create_bot(coin, chat_id, command_roles, connector):
             return
         try:
             coin = await bot.set_coin(ctx.guild.id, symbol)
-            await ctx.send("Set bot {0} to {1} - {2} successfully!"
+            await ctx.send("Set bot #{0} to {1} - {2} successfully!"
                            .format(bot.chat_id, coin.symbol.upper(), coin.name))
         except discord.DiscordException as e:
             await ctx.send("Error: {}".format(e))
