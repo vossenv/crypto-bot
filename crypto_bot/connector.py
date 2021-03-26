@@ -16,6 +16,9 @@ class Coin:
 
 
 class ApiConnector:
+    hard_coins = {
+        'one': 'harmony'
+    }
 
     def __init__(self, base_url):
         self.logger = logging.getLogger("connector")
@@ -43,7 +46,7 @@ class ApiConnector:
         d = ticker[0][id]
         price = d['usd']
         perc = d['usd_24h_change']
-        return price, round(perc, 2)
+        return price, round(perc, 2) if perc else "N/A"
 
     async def get_icon(self, symbol):
         path = "/coins/{}"
@@ -52,8 +55,7 @@ class ApiConnector:
             raise AssertionError("Coin by name: {} was not found".format(symbol))
         r = await self.call(self.base_url + path.format(c.coin_id))
         url = r[0]['image']['thumb']
-        return (await self.call(url, headers={'Accept':'image/png'}, json=False))[0]
-
+        return (await self.call(url, headers={'Accept': 'image/png'}, json=False))[0]
 
     def get_coins(self):
         path = "/coins/list"
@@ -66,7 +68,11 @@ class ApiConnector:
                     coins = json.loads(response.content)
                     if not isinstance(coins, list) or not self.is_coin(coins[0]):
                         raise TypeError
-                    self.coins = {c['symbol'].lower(): Coin(**c) for c in coins}
+                    coins = {c['id']: c for c in coins}
+                    self.coins = {c['symbol'].lower(): Coin(**c) for c in coins.values()}
+                    for c, i in self.hard_coins.items():
+                        if c in coins:
+                            self.coins[c] = Coin(**coins[i])
                 except TypeError as e:
                     raise requests.RequestException("Content was not expected: {}".format(response.content))
             except Exception as e:
