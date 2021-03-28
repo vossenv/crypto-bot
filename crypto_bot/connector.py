@@ -7,12 +7,7 @@ import aiohttp
 import requests
 
 
-class Coin:
 
-    def __init__(self, id, symbol, name):
-        self.coin_id = id
-        self.symbol = symbol
-        self.name = name
 
 
 class ApiConnector:
@@ -25,6 +20,9 @@ class ApiConnector:
         self.base_url = base_url
         self.coins = {}
         threading.Thread(target=self.get_coins).start()
+
+    def has_coin(self, symbol):
+        return symbol.lower() in self.coins
 
     async def call(self, url, method="GET", headers=None, data=None, json=True):
         async with aiohttp.request(method=method, url=url, data=data or {}, headers=headers or {}) as r:

@@ -11,6 +11,7 @@ from crypto_bot.bots import create_bot
 from crypto_bot.config import load_config, init_logger
 from crypto_bot.connector import ApiConnector
 from crypto_bot.error import ApiError
+from crypto_bot.indexer import PriceIndexer
 from crypto_bot.resources import get_resource
 
 try:
@@ -25,6 +26,12 @@ logger.info("Config loaded")
 connector = ApiConnector(config['api_url'])
 logger.info("Start Bots")
 loop = asyncio.get_event_loop()
+
+indexer = PriceIndexer([connector])
+
+
+indexer.index_coin('btc')
+
 for i, b in enumerate(config['bots']):
     chat_id = str(i + 1) if i + 1 > 9 else "0{}".format(i + 1)
     bot = create_bot(b['coin'], chat_id, config['command_roles'], connector)
