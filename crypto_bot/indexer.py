@@ -8,31 +8,27 @@ class Coin:
         self.perc = 0
         self.exchange = None
 
-    def set_values(self, price, perc):
-        self.price = price
-        self.perc = perc
+    def update(self):
+        v, p = self.exchange.get_ticker(self.symbol)
+        self.price = v
+        self.perc = round(p, 2) if p else "N/A"
 
 
 class PriceIndexer:
 
     def __init__(self, connectors):
-
         self.coins = {}
         self.connectors = connectors
-
-        print()
+        self.info_connector = connectors[-1]
 
     def index_coin(self, symbol):
         if symbol not in self.coins:
+            coin = self.info_connector.get_coin(symbol)
+            if not coin:
+                raise ValueError("Coin '{}' not found".format(symbol))
             for c in self.connectors:
                 if c.has_coin(symbol):
-                    coin = c.get_coin(symbol)
-                    
-            coin.set_prices(self.fetch_price(coin.symbol))
+                    coin.exchange = c
+                    break
+            coin.update()
             self.coins[coin.symbol] = coin
-
-    def fetch_price(self, symbol):
-        for c in self.connectors:
-            if c.has_coin(symbol):
-                return c.get_ticker(symbol)
-        raise ValueError("Coin '{}' not found in any exchange".format(symbol))

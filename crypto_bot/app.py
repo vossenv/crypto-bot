@@ -4,6 +4,7 @@ import glob
 import os
 import sys
 import threading
+import time
 
 from flask import Flask, render_template, jsonify
 
@@ -26,7 +27,7 @@ logger.info("Config loaded")
 connector = ApiConnector(config['api_url'])
 logger.info("Start Bots")
 loop = asyncio.get_event_loop()
-
+time.sleep(5)
 indexer = PriceIndexer([connector])
 
 
