@@ -120,7 +120,7 @@ def create_bot(token, coin, chat_id, command_roles, connector):
             return
         try:
             coin = await bot.set_coin(ctx.guild.id, symbol)
-            ConfigLoader.update_bot_coin(bot.token, symbol)
+            config_loader.update_bot_coin(bot.token, symbol)
             await ctx.send("Set bot #{0} to {1} - {2} successfully!"
                            .format(bot.chat_id, coin.symbol.upper(), coin.name))
         except discord.DiscordException as e:
