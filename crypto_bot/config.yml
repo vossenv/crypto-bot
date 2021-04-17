@@ -1,0 +1,9 @@
+api_url: https://api.coingecko.com/api/v3
+log_level: info
+bots:
+  # XXXXX
+  ODI1NTI2NDM0MzE0MzIxOTUx.YF_NZw.pZzEys9dCxNN1_zIUnrAt340uGg: NPXS
+  ODIyOTg2ODQxNTU2NTE2OTQ0.YFaQOQ.57PAwehRm8Tnxi83tqWYWvt2knU: ONE
+
+command_roles:
+  - everyone

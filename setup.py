@@ -38,7 +38,8 @@ setup(name='crypto-bot',
           'schema',
           'Flask',
           'Werkzeug',
-          'requests'
+          'requests',
+          'ruamel.yaml'
       ],
       extras_require={
           'setup': setup_deps,

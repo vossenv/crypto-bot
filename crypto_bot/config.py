@@ -1,68 +1,65 @@
 import logging.config
 import os
 
-import yaml
+from ruamel import yaml
+# import yaml
 from schema import Schema, Or
+
+yaml = yaml.YAML()
+yaml.indent(sequence=4, offset=2)
 
 from crypto_bot.resources import get_resource
 
 config_defaults = {
     'api_url': 'https://api.coingecko.com/api/v3',
     'log_level': 'INFO',
-    'bots': [],
+    'bots': {},
     'command_roles': ['everyone']
 }
 
 
-def config_schema() -> Schema:
-    return Schema({
-        'api_url': str,
-        'log_level': Or('info', 'debug', 'INFO', 'DEBUG'),
-        'bots': [{
-            'token': str,
-            'coin': str
-        }],
-        'command_roles': Or([str], {str})
-    })
+class ConfigLoader:
 
+    def __init__(self, config_path="config.yml"):
+        self.config_path = config_path
+        self.active_config = self.load_config(config_path)
+        self.save_config()
 
-def load_config(path):
-    cfg = config_defaults
-    if path:
+    def config_schema(self) -> Schema:
+        return Schema({
+            'api_url': str,
+            'log_level': Or('info', 'debug', 'INFO', 'DEBUG'),
+            'bots': {str: str},
+            'command_roles': Or([str], {str})
+        })
+
+    def load_config(self, path):
+        cfg = config_defaults
         with open(path) as f:
-            cfg.update(yaml.safe_load(f))
+            cfg.update(yaml.load(f))
 
-    envs = {decode(k, True): decode(v) for k, v in os.environ._data.items() if decode(k, True)}
-    botenv = envs.get('bots')
-    if botenv:
-        for val in botenv.split(','):
-            if not val.strip():
-                continue
-            t = val.split("=")
-            if len(t) < 2:
-                raise ConfigValidationError("Improper bot config: {}".format(val))
-            cfg['bots'].append({'coin': t[0], 'token': t[1]})
-    if not cfg['bots']:
-        raise AssertionError("No bots found!")
-    for k in cfg:
-        if k == 'bots':
-            continue
-        v = envs.get(k)
-        if v:
-            cfg[k] = envs[k]
-    if isinstance(cfg['command_roles'], str):
-        cfg['command_roles'] = cfg['command_roles'].split(',')
+        if not cfg['bots']:
+            raise AssertionError("No bots found!")
 
-    _validate(cfg)
-    return cfg
+        if isinstance(cfg['command_roles'], str):
+            cfg['command_roles'] = cfg['command_roles'].split(',')
+        self._validate(cfg)
+        return cfg
 
+    def _validate(self, raw_config: dict):
+        from schema import SchemaError
+        try:
+            self.config_schema().validate(raw_config)
+        except SchemaError as e:
+            raise ConfigValidationError(e.code) from e
 
-def _validate(raw_config: dict):
-    from schema import SchemaError
-    try:
-        config_schema().validate(raw_config)
-    except SchemaError as e:
-        raise ConfigValidationError(e.code) from e
+    def save_config(self):
+        with open(self.config_path, 'w') as f:
+            yaml.dump(self.active_config, f)
+
+    def update_bot_coin(self, token, coin):
+        self.active_config['bots'][token] = coin.upper()
+        self.save_config()
 
 
 class ConfigValidationError(Exception):
@@ -86,7 +83,7 @@ def init_logger(level):
     if not os.path.exists("logs"):
         os.mkdir("logs")
     with open(get_resource("logger_config.yaml")) as cfg:
-        data = yaml.safe_load(cfg)
+        data = yaml.load(cfg)
         data['loggers']['']['level'] = level.upper()
         logging.config.dictConfig(data)
         return logging.getLogger()
