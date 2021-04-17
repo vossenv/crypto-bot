@@ -7,6 +7,8 @@ from random import random
 import discord
 from discord.ext.commands import Bot, MissingRequiredArgument
 
+config_loader = None
+
 
 class CoinAssociation:
 
@@ -22,8 +24,9 @@ class CoinAssociation:
 
 class CryptoBot(Bot):
 
-    def __init__(self, coin, chat_id, command_roles, connector, *args, **kwargs):
+    def __init__(self, token, coin, chat_id, command_roles, connector, *args, **kwargs):
         super(CryptoBot, self).__init__(*args, **kwargs)
+        self.token = token
         self.coin = coin.upper()
         self.chat_id = chat_id
         self.command_roles = {c.lower() for c in command_roles}
@@ -48,8 +51,8 @@ class CryptoBot(Bot):
     async def status_loop(self):
 
         while True:
-                await self.update()
-                await asyncio.sleep(6)
+            await self.update()
+            await asyncio.sleep(6)
 
     async def update(self):
         for g, a in self.associations.items():
@@ -85,9 +88,13 @@ class CryptoBot(Bot):
             data[a.membership.guild.name] = a.membership.nick
         return data
 
+    async def start(self):
+        await super().start(self.token)
 
-def create_bot(coin, chat_id, command_roles, connector):
+
+def create_bot(token, coin, chat_id, command_roles, connector):
     bot = CryptoBot(command_prefix="!{} ".format(chat_id.lstrip("0")),
+                    token=token,
                     coin=coin,
                     chat_id=chat_id,
                     command_roles=command_roles,
@@ -113,6 +120,7 @@ def create_bot(coin, chat_id, command_roles, connector):
             return
         try:
             coin = await bot.set_coin(ctx.guild.id, symbol)
+            config_loader.update_bot_coin(bot.token, symbol)
             await ctx.send("Set bot #{0} to {1} - {2} successfully!"
                            .format(bot.chat_id, coin.symbol.upper(), coin.name))
         except discord.DiscordException as e:
@@ -122,7 +130,8 @@ def create_bot(coin, chat_id, command_roles, connector):
     async def get_price(ctx, symbol):
         try:
             s = await bot.connector.get_ticker(symbol)
-            await ctx.send("{}: ${}, change: {}%".format(symbol.upper(), s[0], s[1]))
+            name = bot.connector.get_name(symbol)
+            await ctx.send("{}/{}: ${}, change: {}%".format(symbol.upper(), name, s[0], s[1]))
         except Exception as e:
             await ctx.send("Error: {}".format(e))
 

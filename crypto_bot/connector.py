@@ -81,3 +81,9 @@ class ApiConnector:
 
     def is_coin(self, d):
         return set(d.keys()) - {'id', 'symbol', 'name'} == set()
+
+    def get_name(self, symbol):
+        symbol = symbol.lower()
+        if symbol in self.coins:
+            return self.coins[symbol].name
+
