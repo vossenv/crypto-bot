@@ -3,12 +3,12 @@ import logging
 import threading
 import time
 from random import random
-from config import ConfigLoader
+
 import discord
 from discord.ext.commands import Bot, MissingRequiredArgument
 
-
 config_loader = None
+
 
 class CoinAssociation:
 
