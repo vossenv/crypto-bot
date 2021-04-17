@@ -97,7 +97,12 @@ def create_bot(coin, chat_id, command_roles, connector):
     @bot.event
     async def on_ready():
         bot.logger.info("#{} - {} is ready!".format(bot.chat_id, bot.coin))
+        channel = bot.get_channel(815489682598002708)
+        await channel.send('HAPPY BONESDAY')
         await bot.ready()
+
+
+
 
     @bot.command(name='feed', help='Get some soup')
     async def feed(ctx):
