@@ -29,16 +29,11 @@ class PriceIndexer:
         c.update(*self.base_exchange.get_ticker(symbol))
         self.coins[symbol.lower()] = c
 
-    async def get_ticker(self, symbol):
+    def get_coin(self, symbol):
         symbol = symbol.lower()
         if symbol not in self.coins:
             self.add_new_coin(symbol)
-
-        c = self.coins[symbol]
-        return c.price, c.perc
-
-    def get_name(self, symbol):
-        return "ABC"
+        return self.coins[symbol]
 
     # def add_bot(self, bot):
 

@@ -3,7 +3,6 @@ import logging
 import threading
 import time
 
-import aiohttp
 import requests
 
 from crypto_bot.error import CoinNotFoundException
@@ -65,11 +64,6 @@ class Exchange:
 
     def is_coin(self, d):
         return set(d.keys()) - {'id', 'symbol', 'name'} == set()
-
-    def get_name(self, symbol):
-        symbol = symbol.lower()
-        if symbol in self.coins:
-            return self.coins[symbol].name
 
     def get_coin_def(self, symbol):
         return self.coins.get(symbol.lower())

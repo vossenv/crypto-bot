@@ -35,14 +35,12 @@ class CryptoBot(Bot):
         self.logger.info("Starting bot...")
         self.indexer = indexer
 
-    async def set_coin(self, guild, coin):
-        coin = str(coin).lower()
-        full = self.indexer.coins.get(coin)
-        if not full:
-            raise discord.DiscordException("Invalid coin selection: {}".format(coin.upper()))
-        self.associations[guild].update(coin)
+    async def set_coin(self, guild, symbol):
+        symbol = str(symbol).lower()
+        coin = self.indexer.get_coin(symbol)
+        self.associations[guild].update(symbol)
         await self.update()
-        return full
+        return coin
 
     async def ready(self):
         threading.Thread(target=self.update_memberships).start()
@@ -57,10 +55,10 @@ class CryptoBot(Bot):
     async def update(self):
         for g, a in self.associations.items():
             try:
-                price, perc = await self.indexer.get_ticker(a.coin)
-                dir = ("↑" if perc >= 0 else "↓") if isinstance(perc, float) else ""
-                await a.membership.edit(nick="!{0} {1} {2}".format(self.chat_id, a.coin, price))
-                act = discord.Activity(type=discord.ActivityType.watching, name="{0} % {1}".format(perc, dir))
+                c = self.indexer.get_coin(a.coin)
+                dir = ("↑" if c.perc >= 0 else "↓") if isinstance(c.perc, float) else ""
+                act = discord.Activity(type=discord.ActivityType.watching, name="{0} % {1}".format(c.perc, dir))
+                await a.membership.edit(nick="!{0} {1} {2}".format(self.chat_id, a.coin, c.price))
                 await self.change_presence(status=discord.Status.online, activity=act)
             except Exception as e:
                 self.logger.error(e)
@@ -125,9 +123,8 @@ def create_bot(token, coin, chat_id, command_roles, indexer):
     @bot.command(name='price', help='Get a price. Usage: 1[#] price DOGE - # indicates bot number')
     async def get_price(ctx, symbol):
         try:
-            s = await bot.indexer.get_ticker(symbol)
-            name = bot.indexer.get_name(symbol)
-            await ctx.send("{}/{}: ${}, change: {}%".format(symbol.upper(), name, s[0], s[1]))
+            c = bot.indexer.get_coin(symbol)
+            await ctx.send("{}/{}: ${}, change: {}%".format(symbol.upper(), c.name, c.price, c.perc))
         except Exception as e:
             await ctx.send("Error: {}".format(e))
 
