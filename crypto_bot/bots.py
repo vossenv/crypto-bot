@@ -7,6 +7,8 @@ from random import random
 import discord
 from discord.ext.commands import Bot, MissingRequiredArgument
 
+from crypto_bot.error import CoinNotFoundException
+
 config_loader = None
 
 
@@ -32,7 +34,7 @@ class CryptoBot(Bot):
         self.command_roles = {c.lower() for c in command_roles}
         self.associations = {}
         self.logger = logging.getLogger("{} bot".format(coin))
-        self.logger.info("Starting bot...")
+        self.logger.info("Starting {} bot...".format(self.coin))
         self.indexer = indexer
 
     async def set_coin(self, guild, symbol):
@@ -56,8 +58,7 @@ class CryptoBot(Bot):
         for g, a in self.associations.items():
             try:
                 c = self.indexer.get_coin(a.coin)
-                dir = ("↑" if c.perc >= 0 else "↓") if isinstance(c.perc, float) else ""
-                act = discord.Activity(type=discord.ActivityType.watching, name="{0} % {1}".format(c.perc, dir))
+                act = discord.Activity(type=discord.ActivityType.watching, name="{0} % {1}".format(c.perc, c.direction))
                 await a.membership.edit(nick="!{0} {1} {2}".format(self.chat_id, a.coin, c.price))
                 await self.change_presence(status=discord.Status.online, activity=act)
             except Exception as e:
@@ -117,7 +118,7 @@ def create_bot(token, coin, chat_id, command_roles, indexer):
             config_loader.update_bot_coin(bot.token, symbol)
             await ctx.send("Set bot #{0} to {1} - {2} successfully!"
                            .format(bot.chat_id, coin.symbol.upper(), coin.name))
-        except discord.DiscordException as e:
+        except (CoinNotFoundException, discord.DiscordException) as e:
             await ctx.send("Error: {}".format(e))
 
     @bot.command(name='price', help='Get a price. Usage: 1[#] price DOGE - # indicates bot number')

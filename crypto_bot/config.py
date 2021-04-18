@@ -12,9 +12,14 @@ from crypto_bot.resources import get_resource
 
 config_defaults = {
     'exchanges': [],
-    'log_level': 'INFO',
-    'bots': {},
-    'command_roles': ['everyone']
+    'process': {
+        'log_level': 'INFO',
+        'update_rate': 3,
+    },
+    'discord': {
+        'bots': {},
+        'command_roles': ['everyone']
+    }
 }
 
 
@@ -32,23 +37,22 @@ class ConfigLoader:
                 'priority': int,
                 'api_url': str
             }],
-            'log_level': Or('info', 'debug', 'INFO', 'DEBUG'),
-            'bots': {str: str},
-            'command_roles': Or([str], {str})
+            'process': {
+                'log_level': Or('info', 'debug', 'INFO', 'DEBUG'),
+                'update_rate': Or(float, int),
+            },
+            'discord': {
+                'bots': {str: str},
+                'command_roles': Or([str], {str})
+            }
         })
 
     def load_config(self, path):
         cfg = config_defaults
         with open(path) as f:
             cfg.update(yaml.load(f))
-
-        if not cfg['bots']:
-            raise AssertionError("No bots found!")
-
-        if isinstance(cfg['command_roles'], str):
-            cfg['command_roles'] = cfg['command_roles'].split(',')
-
         self._validate(cfg)
+
         return cfg
 
     def _validate(self, raw_config: dict):
@@ -63,7 +67,7 @@ class ConfigLoader:
             yaml.dump(self.active_config, f)
 
     def update_bot_coin(self, token, coin):
-        self.active_config['bots'][token] = coin.upper()
+        self.active_config['discord']['bots'][token] = coin.upper()
         self.save_config()
 
 

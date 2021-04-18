@@ -1,3 +1,7 @@
+import logging
+import threading
+import time
+
 from crypto_bot.error import CoinNotFoundException
 
 
@@ -9,18 +13,22 @@ class Coin:
         self.name = name
         self.price = 0
         self.perc = 0
+        self.direction = ""
 
     def update(self, price, perc):
         self.price = price
         self.perc = round(perc, 2) if perc else "N/A"
+        self.direction = ("↑" if perc >= 0 else "↓") if isinstance(perc, float) else ""
 
 
 class PriceIndexer:
 
-    def __init__(self, exchanges):
+    def __init__(self, exchanges, update_rate):
         self.exchanges = exchanges
         self.base_exchange = exchanges[0]
+        self.update_rate = update_rate
         self.coins = {}
+        self.logger = logging.getLogger("indexer")
 
     def add_new_coin(self, symbol):
         c = self.base_exchange.get_coin_def(symbol)
@@ -35,16 +43,19 @@ class PriceIndexer:
             self.add_new_coin(symbol)
         return self.coins[symbol]
 
-    # def add_bot(self, bot):
+    def run(self):
+        pass
+        threading.Thread(target=self.update_loop).start()
 
-    # def index_coin(self, symbol):
-    #     if symbol not in self.coins:
-    #         coin = self.info_connector.get_coin(symbol)
-    #         if not coin:
-    #             raise ValueError("Coin '{}' not found".format(symbol))
-    #         for c in self.connectors:
-    #             if c.has_coin(symbol):
-    #                 coin.exchange = c
-    #                 break
-    #         coin.update()
-    #         self.coins[coin.symbol] = coin
+    def update_loop(self):
+
+        while True:
+            for c in self.coins.values():
+
+                try:
+                    data = self.base_exchange.get_ticker(c.symbol)
+                    c.update(data[0], data[1])
+                except Exception as e:
+                    self.logger.error(e)
+
+            time.sleep(self.update_rate)
