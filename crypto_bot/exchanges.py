@@ -6,24 +6,20 @@ import time
 import aiohttp
 import requests
 
-
-class Coin:
-
-    def __init__(self, id, symbol, name):
-        self.coin_id = id
-        self.symbol = symbol
-        self.name = name
+from crypto_bot.price_indexer import Coin
 
 
-class ApiConnector:
+class Exchange:
     hard_coins = {
         'one': 'harmony'
     }
 
-    def __init__(self, base_url):
-        self.logger = logging.getLogger("connector")
-        self.base_url = base_url
+    def __init__(self, config):
+        self.priority = int(config['priority'])
+        self.name = config['name']
+        self.base_url = config['api_url']
         self.coins = {}
+        self.logger = logging.getLogger("connector")
         threading.Thread(target=self.get_coins).start()
 
     async def call(self, url, method="GET", headers=None, data=None, json=True):

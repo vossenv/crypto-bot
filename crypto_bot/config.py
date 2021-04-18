@@ -11,7 +11,7 @@ yaml.indent(sequence=4, offset=2)
 from crypto_bot.resources import get_resource
 
 config_defaults = {
-    'api_url': 'https://api.coingecko.com/api/v3',
+    'exchanges': [],
     'log_level': 'INFO',
     'bots': {},
     'command_roles': ['everyone']
@@ -27,7 +27,11 @@ class ConfigLoader:
 
     def config_schema(self) -> Schema:
         return Schema({
-            'api_url': str,
+            'exchanges': [{
+                'name': str,
+                'priority': int,
+                'api_url': str
+            }],
             'log_level': Or('info', 'debug', 'INFO', 'DEBUG'),
             'bots': {str: str},
             'command_roles': Or([str], {str})
@@ -43,6 +47,7 @@ class ConfigLoader:
 
         if isinstance(cfg['command_roles'], str):
             cfg['command_roles'] = cfg['command_roles'].split(',')
+
         self._validate(cfg)
         return cfg
 
