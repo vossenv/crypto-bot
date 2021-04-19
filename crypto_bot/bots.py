@@ -7,6 +7,8 @@ from random import random
 import discord
 from discord.ext.commands import Bot, MissingRequiredArgument
 
+from crypto_bot.error import CoinNotFoundException
+
 config_loader = None
 
 
@@ -24,7 +26,7 @@ class CoinAssociation:
 
 class CryptoBot(Bot):
 
-    def __init__(self, token, coin, chat_id, command_roles, connector, *args, **kwargs):
+    def __init__(self, token, coin, chat_id, command_roles, indexer, *args, **kwargs):
         super(CryptoBot, self).__init__(*args, **kwargs)
         self.token = token
         self.coin = coin.upper()
@@ -32,39 +34,31 @@ class CryptoBot(Bot):
         self.command_roles = {c.lower() for c in command_roles}
         self.associations = {}
         self.logger = logging.getLogger("{} bot".format(coin))
-        self.logger.info("Starting bot...")
-        self.connector = connector
+        self.logger.info("Starting {} bot...".format(self.coin))
+        self.indexer = indexer
 
-    async def set_coin(self, guild, coin):
-        coin = str(coin).lower()
-        full = self.connector.coins.get(coin)
-        if not full:
-            raise discord.DiscordException("Invalid coin selection: {}".format(coin.upper()))
-        self.associations[guild].update(coin)
+    async def set_coin(self, guild, symbol):
+        symbol = str(symbol).lower()
+        coin = self.indexer.get_coin(symbol, update=True)
+        self.associations[guild].update(symbol)
         await self.update()
-        return full
+        return coin
 
     async def ready(self):
         threading.Thread(target=self.update_memberships).start()
         await self.status_loop()
 
     async def status_loop(self):
-
         while True:
             await self.update()
-            await asyncio.sleep(6)
+            await asyncio.sleep(0.5)
 
     async def update(self):
         for g, a in self.associations.items():
-            # if not a.image:
-            #     a.image = await self.connector.get_icon(a.coin)
-            #     await edit_server()
-            # await self.user.edit(avatar=None)
             try:
-                price, perc = await self.connector.get_ticker(a.coin)
-                dir = ("↑" if perc >= 0 else "↓") if isinstance(perc, float) else ""
-                await a.membership.edit(nick="!{0} {1} {2}".format(self.chat_id, a.coin, price))
-                act = discord.Activity(type=discord.ActivityType.watching, name="{0} % {1}".format(perc, dir))
+                c = self.indexer.get_coin(a.coin)
+                act = discord.Activity(type=discord.ActivityType.watching, name="{0} % {1}".format(c.perc, c.direction))
+                await a.membership.edit(nick="!{0} {1} {2}".format(self.chat_id, a.coin, c.price))
                 await self.change_presence(status=discord.Status.online, activity=act)
             except Exception as e:
                 self.logger.error(e)
@@ -92,13 +86,13 @@ class CryptoBot(Bot):
         await super().start(self.token)
 
 
-def create_bot(token, coin, chat_id, command_roles, connector):
+def create_bot(token, coin, chat_id, command_roles, indexer):
     bot = CryptoBot(command_prefix="!{} ".format(chat_id.lstrip("0")),
                     token=token,
                     coin=coin,
                     chat_id=chat_id,
                     command_roles=command_roles,
-                    connector=connector,
+                    indexer=indexer,
                     case_insensitive=True)
 
     @bot.event
@@ -123,15 +117,17 @@ def create_bot(token, coin, chat_id, command_roles, connector):
             config_loader.update_bot_coin(bot.token, symbol)
             await ctx.send("Set bot #{0} to {1} - {2} successfully!"
                            .format(bot.chat_id, coin.symbol.upper(), coin.name))
-        except discord.DiscordException as e:
-            await ctx.send("Error: {}".format(e))
+        except CoinNotFoundException as e:
+            await ctx.send(e)
+        except Exception as e:
+            await ctx.send("An unexpected error occured")
+            bot.logger.error(e)
 
     @bot.command(name='price', help='Get a price. Usage: 1[#] price DOGE - # indicates bot number')
     async def get_price(ctx, symbol):
         try:
-            s = await bot.connector.get_ticker(symbol)
-            name = bot.connector.get_name(symbol)
-            await ctx.send("{}/{}: ${}, change: {}%".format(symbol.upper(), name, s[0], s[1]))
+            c = bot.indexer.get_coin(symbol)
+            await ctx.send("{}/{}: ${}, change: {}%".format(symbol.upper(), c.name, c.price, c.perc))
         except Exception as e:
             await ctx.send("Error: {}".format(e))
 

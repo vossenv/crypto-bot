@@ -15,6 +15,8 @@ handlers:
         class: logging.handlers.RotatingFileHandler
         formatter: standard
         filename: logs/process.log
+        maxBytes: 1e6
+        backupCount: 10
 loggers:
     "":
         handlers:
@@ -23,10 +25,7 @@ loggers:
         level: DEBUG
         propagate: true
     "urllib3":
-        handlers:
-            - console
-            - file
-        level: ERROR
+        level: INFO
         propagate: true
     "discord":
         handlers:
