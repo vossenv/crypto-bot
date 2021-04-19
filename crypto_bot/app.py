@@ -22,6 +22,11 @@ logger.info("Config loaded")
 exchanges = [Exchange(dict(c)) for c in config['exchanges']]
 indexer = PriceIndexer(exchanges, config['process']['update_rate'])
 
+indexer.wait_exchanges()
+init_coins = set(config['discord']['bots'].values())
+for c in init_coins:
+    indexer.add_new_coin(c)
+
 logger.info("Start Bots")
 loop = asyncio.get_event_loop()
 for i, c in enumerate(config['discord']['bots'].items()):

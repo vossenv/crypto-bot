@@ -39,7 +39,7 @@ class CryptoBot(Bot):
 
     async def set_coin(self, guild, symbol):
         symbol = str(symbol).lower()
-        coin = self.indexer.get_coin(symbol)
+        coin = self.indexer.get_coin(symbol, update=True)
         self.associations[guild].update(symbol)
         await self.update()
         return coin

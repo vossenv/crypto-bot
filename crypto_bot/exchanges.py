@@ -19,6 +19,7 @@ class Exchange:
         self.base_url = config['api_url']
         self.coins = {}
         self.logger = logging.getLogger("connector")
+        self.ready = False
         threading.Thread(target=self.get_coins).start()
 
     def call(self, url, method="GET", headers=None, data=None, json=True):
@@ -27,14 +28,29 @@ class Exchange:
             raise requests.RequestException("{}: {}".format(r.status_code, r.content))
         return r.json() if json else r.content
 
-    def get_ticker(self, symbol):
-        path = "/simple/price?ids={}&vs_currencies=usd&include_24hr_change=true"
-        c = self.get_coin_def(symbol)
-        ticker = self.call(self.base_url + path.format(c.coin_id))
-        return self.parse_ticker(c.coin_id, ticker)
+    def get_tickers(self, symbols):
 
-    def parse_ticker(self, id, ticker):
-        d = ticker[id]
+        coins = {}
+        if not symbols:
+            return coins
+        symbols = {symbols} if isinstance(symbols, str) else set(symbols)
+
+        for c in symbols:
+            try:
+                coin = self.get_coin_def(c)
+                coins[coin.coin_id] = coin
+            except CoinNotFoundException:
+                continue
+
+        l = ",".join(coins.keys())
+        path = "/simple/price?ids={}&vs_currencies=usd&include_24hr_change=true"
+        tickers = self.call(self.base_url + path.format(l))
+        return {coins[t].symbol: self.parse_ticker(d) for t, d in tickers.items()}
+
+    def get_ticker(self, symbol):
+        return self.get_tickers(symbol).get(symbol)
+
+    def parse_ticker(self, d):
         price = d['usd']
         perc = d['usd_24h_change']
         return price, round(perc, 2) if perc else "N/A"
@@ -44,30 +60,24 @@ class Exchange:
         while True:
             try:
                 response = self.call(self.base_url + path)
-
                 if not isinstance(response, list):
                     raise AssertionError("Response is not a list of coins")
 
                 for c in response:
                     try:
                         coin = Coin.create(c)
-
-                        hc = self.hard_coins.get(coin.symbol)
-                        if hc and coin.coin_id != self.hard_coins[coin.symbol]:
+                        if coin.symbol in self.hard_coins and coin.coin_id != self.hard_coins[coin.symbol]:
                             continue
-
                         if coin.symbol not in self.coins:
                             self.coins[coin.symbol] = coin
                         else:
                             self.coins[coin.symbol].coin_id = coin.coin_id
                             self.coins[coin.symbol].name = coin.name
-
                     except InvalidCoinException as e:
                         self.logger.error(e)
-
             except Exception as e:
                 self.logger.error(e)
-
+            self.ready = True
             time.sleep(650)
 
     def get_coin_def(self, symbol):

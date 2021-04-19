@@ -39,16 +39,23 @@ class PriceIndexer:
         self.update_rate = update_rate
         self.coins = {}
         self.logger = logging.getLogger("indexer")
+        self.ready = False
+
+    def wait_exchanges(self):
+        while {e.ready for e in self.exchanges} == {False}:
+            self.logger.info("Waiting for exchanges...")
+            time.sleep(0.5)
 
     def add_new_coin(self, symbol):
         c = self.base_exchange.get_coin_def(symbol)
-        c.update(*self.base_exchange.get_ticker(symbol))
         self.coins[symbol.lower()] = c
 
-    def get_coin(self, symbol):
+    def get_coin(self, symbol, update=False):
         symbol = symbol.lower()
         if symbol not in self.coins:
             self.add_new_coin(symbol)
+            if update:
+                self.update_coins()
         return self.coins[symbol]
 
     def run(self):
@@ -56,11 +63,14 @@ class PriceIndexer:
 
     def update_loop(self):
         while True:
-            for c in self.coins:
-                try:
-                    data = self.base_exchange.get_ticker(c)
-                    self.coins[c].update(data[0], data[1])
-                   #self.logger.debug("{} {}".format(c, data))
-                except Exception as e:
-                    self.logger.error(e)
+            self.update_coins()
             time.sleep(self.update_rate)
+
+    def update_coins(self):
+        try:
+            updates = self.base_exchange.get_tickers(set(self.coins.keys()))
+            for c, v in updates.items():
+                self.coins[c].update(v[0], v[1])
+        except Exception as e:
+            self.logger.error(e)
+
