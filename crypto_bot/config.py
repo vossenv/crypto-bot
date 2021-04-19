@@ -2,7 +2,6 @@ import logging.config
 import os
 
 from ruamel import yaml
-# import yaml
 from schema import Schema, Or
 
 yaml = yaml.YAML()

@@ -4,3 +4,6 @@ class CoinNotFoundException(Exception):
         self.symbol = symbol
         self.message = "Coin by name: {} was not found".format(symbol.upper())
         super().__init__(self.message)
+
+class InvalidCoinException(Exception):
+    pass

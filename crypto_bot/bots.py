@@ -49,10 +49,9 @@ class CryptoBot(Bot):
         await self.status_loop()
 
     async def status_loop(self):
-
         while True:
             await self.update()
-            await asyncio.sleep(6)
+            await asyncio.sleep(0.5)
 
     async def update(self):
         for g, a in self.associations.items():
@@ -118,8 +117,11 @@ def create_bot(token, coin, chat_id, command_roles, indexer):
             config_loader.update_bot_coin(bot.token, symbol)
             await ctx.send("Set bot #{0} to {1} - {2} successfully!"
                            .format(bot.chat_id, coin.symbol.upper(), coin.name))
-        except (CoinNotFoundException, discord.DiscordException) as e:
-            await ctx.send("Error: {}".format(e))
+        except CoinNotFoundException as e:
+            await ctx.send(e)
+        except Exception as e:
+            await ctx.send("An unexpected error occured")
+            bot.logger.error(e)
 
     @bot.command(name='price', help='Get a price. Usage: 1[#] price DOGE - # indicates bot number')
     async def get_price(ctx, symbol):
