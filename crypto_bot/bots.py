@@ -39,7 +39,7 @@ class CryptoBot(Bot):
 
     async def set_coin(self, guild, symbol):
         symbol = str(symbol).lower()
-        coin = self.indexer.get_coin(symbol, update=True)
+        coin = self.indexer.get_coin(symbol, wait=True)
         self.associations[guild].update(symbol)
         await self.update()
         return coin
@@ -111,10 +111,13 @@ def create_bot(token, coin, chat_id, command_roles, indexer):
     async def set_coin(ctx, symbol):
         if not ctx.author.id == ctx.guild.owner_id and \
                 not {r.name.lstrip('@').lower() for r in ctx.author.roles} & bot.command_roles:
+            await ctx.send("You do not have permission to use this function")
             return
         try:
+            await ctx.send("Attempting to set coin to {}".format(symbol))
             coin = await bot.set_coin(ctx.guild.id, symbol)
-            config_loader.update_bot_coin(bot.token, symbol)
+            if config_loader.is_home_id(ctx.guild.id):
+                config_loader.update_bot_coin(bot.token, symbol)
             await ctx.send("Set bot #{0} to {1} - {2} successfully!"
                            .format(bot.chat_id, coin.symbol.upper(), coin.name))
         except CoinNotFoundException as e:
@@ -126,7 +129,7 @@ def create_bot(token, coin, chat_id, command_roles, indexer):
     @bot.command(name='price', help='Get a price. Usage: 1[#] price DOGE - # indicates bot number')
     async def get_price(ctx, symbol):
         try:
-            c = bot.indexer.get_coin(symbol)
+            c = bot.indexer.get_coin(symbol, wait=True)
             await ctx.send("{}/{}: ${}, change: {}%".format(symbol.upper(), c.name, c.price, c.perc))
         except Exception as e:
             await ctx.send("Error: {}".format(e))

@@ -16,6 +16,7 @@ config_defaults = {
         'update_rate': 3,
     },
     'discord': {
+        'home_server': None,
         'bots': {},
         'command_roles': ['everyone']
     }
@@ -41,6 +42,7 @@ class ConfigLoader:
                 'update_rate': Or(float, int),
             },
             'discord': {
+                'home_server': int,
                 'bots': {str: str},
                 'command_roles': Or([str], {str})
             }
@@ -69,6 +71,8 @@ class ConfigLoader:
         self.active_config['discord']['bots'][token] = coin.upper()
         self.save_config()
 
+    def is_home_id(self, sid):
+        return self.active_config['discord']['home_server'] == sid
 
 class ConfigValidationError(Exception):
     def __init__(self, message):

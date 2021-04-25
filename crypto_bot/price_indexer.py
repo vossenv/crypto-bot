@@ -50,11 +50,11 @@ class PriceIndexer:
         c = self.base_exchange.get_coin_def(symbol)
         self.coins[symbol.lower()] = c
 
-    def get_coin(self, symbol, update=False):
+    def get_coin(self, symbol, wait=False):
         symbol = symbol.lower()
         if symbol not in self.coins:
             self.add_new_coin(symbol)
-            if update:
+            if wait:
                 self.update_coins()
         return self.coins[symbol]
 
