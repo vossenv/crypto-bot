@@ -62,7 +62,7 @@ class PriceIndexer:
             except Exception as e:
                 self.logger.error("Error setting coin {} name {}".format(c.symbol, e))
         self.coins[symbol.lower()] = c
-        self.info_exchange.get_coin_info('doge')
+        #self.info_exchange.get_coin_info('doge')
     def get_coin(self, symbol, wait=False, info=False):
         symbol = symbol.lower()
         if symbol not in self.coins:

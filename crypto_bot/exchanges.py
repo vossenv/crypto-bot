@@ -2,6 +2,7 @@ import collections
 import logging
 import threading
 import time
+from datetime import datetime
 from html.parser import HTMLParser
 from io import StringIO
 
@@ -73,15 +74,18 @@ class Exchange:
         else:
             raise ValueError("Unknown exchange: {}".format(name))
 
+
 class MLStripper(HTMLParser):
     def __init__(self):
         super().__init__()
         self.reset()
         self.strict = False
-        self.convert_charrefs= True
+        self.convert_charrefs = True
         self.text = StringIO()
+
     def handle_data(self, d):
         self.text.write(d)
+
     def get_data(self):
         return self.text.getvalue()
 
@@ -128,7 +132,12 @@ class CoinGeckoExchange(Exchange):
             'homepage': self.get_nested_key(info, ['links', 'homepage'])[0],
             'reddit': self.get_nested_key(info, ['links', 'subreddit_url']),
             'coingecko': 'https://www.coingecko.com/en/coins/{}'.format(cid),
-            'country': info.get('country_origin'),
+            'total_coins': self.get_nested_key(info, ['market_data', 'total_supply']),
+            'circulating_coins': self.get_nested_key(info, ['market_data', 'circulating_supply']),
+            'market_cap': self.get_nested_key(info, ['market_data', 'market_cap', 'usd']),
+            'ath': self.get_nested_key(info, ['market_data', 'ath', 'usd']),
+            'algorithm': info.get('hashing_algorithm'),
+            'block_time': info.get('block_time_in_minutes'),
             'image': self.get_nested_key(info, ['image', 'small']),
         }
 
@@ -143,6 +152,11 @@ class CoinGeckoExchange(Exchange):
         if desc is not None:
             desc = self.strip_tags(desc)
         info_dict['description'] = desc
+
+        ath_date = self.get_nested_key(info, ['market_data', 'ath_date', 'usd'])
+        if ath_date is not None:
+            ath_date = datetime.strptime(ath_date, '%Y-%m-%dT%H:%M:%S.%fZ')
+        info_dict['ath_date'] = ath_date
         return info_dict
 
     def strip_tags(self, html):
@@ -156,15 +170,6 @@ class CoinGeckoExchange(Exchange):
                 break
             d = d.get(k)
         return d
-
-    # async def get_icon(self, symbol):
-    #     path = "/coins/{}"
-    #     c = self.coins.get(symbol.lower())
-    #     if not c:
-    #         raise AssertionError("Coin by name: {} was not found".format(symbol))
-    #     r = await self.call(self.base_url + path.format(c.coin_id))
-    #     url = r[0]['image']['thumb']
-    #     return (await self.call(url, headers={'Accept': 'image/png'}, json=False))[0]
 
     def get_ticker_range(self, coins):
         l = ",".join(coins.keys())

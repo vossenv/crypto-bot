@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import logging
 import threading
 import time
@@ -145,11 +146,15 @@ def create_bot(token, coin, chat_id, command_roles, indexer):
 **Ticker**: {ticker}
 **Name**: {name}
 **Price**: ${price} / {change} %
+**ATH**: ${ath} on {ath_date}
+**Total Supply**: {supply}
+**Circulating Supply**: {circulating}
+**Percent Mined**: {mined}
+**Market Cap**: {cap}
 **Current Index**: {exchange}
 **Homepage**: <{homepage}>
 **Coingecko**: <{coingecko}>
-**Development**: {repos}  
-                """
+**Development**: {repos}"""
             repos = c.info['repos']
             if repos:
                 repos = ["<{}>".format(z) for z in c.info['repos']]
@@ -158,17 +163,47 @@ def create_bot(token, coin, chat_id, command_roles, indexer):
                 else:
                     repos = repos[0]
 
+            d = c.info['ath_date']
+            if isinstance(d, datetime.datetime):
+                d = d.strftime('%m/%d/%Y')
+
+            mined = "N/A"
+            supply = "Uncapped"
+            circulating = "Unknown"
+            market_cap = "Unknown"
+            if c.info['circulating_coins']:
+                circulating = "{:,}".format(round(c.info['circulating_coins']))
+            if c.info['market_cap']:
+                market_cap = "$" + "{:,}".format(c.info['market_cap'])
+            if c.info['total_coins']:
+                supply = "{:,}".format(round(c.info['total_coins']))
+                if circulating != "Unknown":
+                    mined = round(c.info['circulating_coins'] / c.info['total_coins'], 4) * 100
+                    mined = str(mined) + "%"
+
             msg = message.format(
                 image=c.info['image'],
                 ticker=symbol.upper(),
                 name=c.name,
                 price=c.price,
                 change=c.perc,
+                ath=c.info['ath'],
+                ath_date=d,
+                supply=supply,
+                mined=mined,
+                circulating=circulating,
+                cap=market_cap,
                 exchange=c.last_exchange,
                 homepage=c.info['homepage'],
                 coingecko=c.info['coingecko'],
                 repos=repos or "None provided"
             )
+
+            if c.info['algorithm']:
+                message += "\n**Hashing Algorithm**: {}".format(c.info['algorithm'])
+            if c.info['block_time']:
+                message += "\n**Block Time**: {} minutes".format(c.info['block_time'])
+
             await ctx.send(c.info['image'])
             await ctx.send(msg)
             desc = c.info['description']
