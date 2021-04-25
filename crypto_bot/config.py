@@ -2,7 +2,7 @@ import logging.config
 import os
 
 from ruamel import yaml
-from schema import Schema, Or
+from schema import Schema, Or, Optional
 
 yaml = yaml.YAML()
 yaml.indent(sequence=4, offset=2)
@@ -33,7 +33,11 @@ class ConfigLoader:
     def config_schema(self) -> Schema:
         return Schema({
             'exchanges': {
-                'coingecko': {
+                Optional('coingecko'): {
+                    'priority': int,
+                    'api_url': str
+                },
+                Optional('kucoin'): {
                     'priority': int,
                     'api_url': str
                 }
@@ -74,6 +78,7 @@ class ConfigLoader:
 
     def is_home_id(self, sid):
         return self.active_config['discord']['home_server'] == sid
+
 
 class ConfigValidationError(Exception):
     def __init__(self, message):

@@ -2,13 +2,11 @@ import logging
 import threading
 import time
 
-from crypto_bot.error import InvalidCoinException
-
 
 class Coin:
     required_keys = {'id', 'symbol', 'name'}
 
-    def __init__(self, id, symbol, name):
+    def __init__(self, id, symbol, name=None):
         self.coin_id = id
         self.symbol = symbol.lower()
         self.name = name
@@ -20,15 +18,6 @@ class Coin:
         self.price = price
         self.perc = round(perc, 2) if perc else "N/A"
         self.direction = ("↑" if perc >= 0 else "↓") if isinstance(perc, float) else ""
-
-    @classmethod
-    def create(cls, data):
-        ks = set(data.keys())
-        if not cls.required_keys.issubset(ks):
-            missing = cls.required_keys - ks
-            raise InvalidCoinException("Cannot create coin - missing keys: {}".format(missing))
-
-        return Coin(data['id'], data['symbol'], data['name'])
 
 
 class PriceIndexer:
@@ -73,4 +62,3 @@ class PriceIndexer:
                 self.coins[c].update(v[0], v[1])
         except Exception as e:
             self.logger.error(e)
-

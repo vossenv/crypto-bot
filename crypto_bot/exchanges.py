@@ -4,7 +4,7 @@ import time
 
 import requests
 
-from crypto_bot.error import CoinNotFoundException, InvalidCoinException
+from crypto_bot.error import CoinNotFoundException
 from crypto_bot.price_indexer import Coin
 
 
@@ -46,20 +46,14 @@ class Exchange:
         while True:
             try:
                 response = self.call(self.base_url + self.coins_path)
-                if not isinstance(response, list):
-                    raise AssertionError("Response is not a list of coins")
-                for c in response:
-                    try:
-                        coin = Coin.create(c)
-                        if coin.symbol in self.hard_coins and coin.coin_id != self.hard_coins[coin.symbol]:
-                            continue
-                        if coin.symbol not in self.coins:
-                            self.coins[coin.symbol] = coin
-                        else:
-                            self.coins[coin.symbol].coin_id = coin.coin_id
-                            self.coins[coin.symbol].name = coin.name
-                    except InvalidCoinException as e:
-                        self.logger.error(e)
+                for coin in self.parse_coins_response(response):
+                    if coin.symbol in self.hard_coins and coin.coin_id != self.hard_coins[coin.symbol]:
+                        continue
+                    if coin.symbol not in self.coins:
+                        self.coins[coin.symbol] = coin
+                    else:
+                        self.coins[coin.symbol].coin_id = coin.coin_id
+                        self.coins[coin.symbol].name = coin.name
             except Exception as e:
                 self.logger.error(e)
             self.ready = True
@@ -83,10 +77,16 @@ class Exchange:
     def parse_ticker(self, d):
         pass
 
+    def parse_coins_response(self, resp) -> list:
+        pass
+
     @classmethod
     def create(self, name, config):
-        if name.lower() == "coingecko":
+        name = name.lower()
+        if name == "coingecko":
             return CoinGeckoExchange(config)
+        if name == "kucoin":
+            return KucoinExchange(config)
         else:
             raise ValueError("Unknown exchange: {}".format(name))
 
@@ -104,6 +104,40 @@ class CoinGeckoExchange(Exchange):
 
     def get_ticker_range(self, coins):
         l = ",".join(coins.keys())
+        tickers = self.call(self.base_url + self.ticker_path.format(l))
+        return {coins[t].symbol: self.parse_ticker(d) for t, d in tickers.items()}
+
+    def parse_ticker(self, d):
+        price = d['usd']
+        perc = d['usd_24h_change']
+        return price, round(perc, 2) if perc else "N/A"
+
+    def parse_coins_response(self, resp):
+        if not isinstance(resp, list):
+            raise AssertionError("Response is not a list of coins")
+
+        parsed_coins = []
+        for c in resp:
+            try:
+                parsed_coins.append(Coin(c['id'], c['symbol'], c['name']))
+            except Exception as e:
+                self.logger.error(e)
+        return parsed_coins
+
+
+class KucoinExchange(Exchange):
+    hard_coins = {
+        'one': 'harmony'
+    }
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.coins_path = "/api/v1/market/allTickers"
+        self.ticker_path = "/simple/price?ids={}&vs_currencies=usd&include_24hr_change=true"
+        self.start_coin_reads()
+
+    def get_ticker_range(self, coins):
+        l = ",".join(coins.keys())
 
         tickers = self.call(self.base_url + self.ticker_path.format(l))
         return {coins[t].symbol: self.parse_ticker(d) for t, d in tickers.items()}
@@ -112,3 +146,16 @@ class CoinGeckoExchange(Exchange):
         price = d['usd']
         perc = d['usd_24h_change']
         return price, round(perc, 2) if perc else "N/A"
+
+    def parse_coins_response(self, resp):
+        if not 'ticker' in resp['data']:
+            raise AssertionError("Response is not a list of coins")
+
+        parsed_coins = []
+        for c in resp['data']['ticker']:
+            try:
+                symbol = c['symbol'].split('-')[0]
+                parsed_coins.append(Coin(c['symbol'], symbol=symbol))
+            except Exception as e:
+                self.logger.error(e)
+        return parsed_coins
