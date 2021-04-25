@@ -115,11 +115,11 @@ def create_bot(token, coin, chat_id, command_roles, indexer):
             return
         try:
             await ctx.send("Attempting to set coin to {}".format(symbol))
-            coin = await bot.set_coin(ctx.guild.id, symbol)
+            c = await bot.set_coin(ctx.guild.id, symbol)
             if config_loader.is_home_id(ctx.guild.id):
                 config_loader.update_bot_coin(bot.token, symbol)
-            await ctx.send("Set bot #{0} to {1} - {2} successfully!"
-                           .format(bot.chat_id, coin.symbol.upper(), coin.name))
+            await ctx.send("Set bot #{} to {} - {} successfully! - indexed from {}"
+                           .format(bot.chat_id, c.symbol.upper(), c.name or c.coin_id, c.last_exchange))
         except CoinNotFoundException as e:
             await ctx.send(e)
         except Exception as e:
@@ -131,7 +131,7 @@ def create_bot(token, coin, chat_id, command_roles, indexer):
         try:
             c = bot.indexer.get_coin(symbol, wait=True)
             msg = "{}/{}: ${}, change: {}% - indexed from {}"\
-                .format(symbol.upper(), c.name, c.price, c.perc, c.last_exchange)
+                .format(symbol.upper(), c.name or c.coin_id, c.price, c.perc, c.last_exchange)
             await ctx.send(msg)
         except Exception as e:
             await ctx.send("Error: {}".format(e))

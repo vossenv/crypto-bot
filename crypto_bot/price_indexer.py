@@ -7,19 +7,22 @@ from crypto_bot.error import CoinNotFoundException
 
 class Coin:
 
-    def __init__(self, id, symbol, name=None):
+    def __init__(self, id, symbol, name=None, exchange=None):
         self.coin_id = id
         self.symbol = symbol.lower()
         self.name = name
         self.price = 0
         self.perc = 0
-        self.direction = None
-        self.last_exchange = None
+        self.direction = ""
+        self.last_exchange = exchange
 
     def update(self, price, perc, exchange=None):
-        self.price = price
-        self.perc = round(perc, 2) if perc else "N/A"
-        self.direction = ("↑" if perc >= 0 else "↓") if isinstance(perc, float) else ""
+        self.price = float(price)
+        try:
+            self.perc = round(float(perc), 2)
+            self.direction = ("↑" if self.perc >= 0 else "↓")
+        except ValueError:
+            self.perc = perc or "N/A"
         if exchange:
             self.last_exchange = exchange
 
@@ -64,7 +67,7 @@ class PriceIndexer:
         if symbol not in self.coins:
             self.add_new_coin(symbol)
             if wait:
-                self.update_coins()
+                self.update_coins(wait)
         return self.coins[symbol]
 
     def run(self):
@@ -75,7 +78,7 @@ class PriceIndexer:
             self.update_coins()
             time.sleep(self.update_rate)
 
-    def update_coins(self):
+    def update_coins(self, wait=False):
         try:
             threads = []
             remaining = set(self.coins.keys())
@@ -84,7 +87,8 @@ class PriceIndexer:
                 remaining -= e.update_list
                 threads.append(threading.Thread(target=self.get_coins_from_exchange, args=(e,)))
             [t.start() for t in threads]
-            #[t.join() for t in threads]
+            if wait:
+                [t.join() for t in threads]
         except Exception as e:
             self.logger.error(e)
 

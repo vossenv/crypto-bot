@@ -42,23 +42,6 @@ class Exchange:
                 continue
         return self.get_ticker_range(coins)
 
-    def get_coins(self):
-        while True:
-            try:
-                response = self.call(self.base_url + self.coins_path)
-                for coin in self.parse_coins_response(response):
-                    if coin.symbol in self.hard_coins and coin.coin_id != self.hard_coins[coin.symbol]:
-                        continue
-                    if coin.symbol not in self.coins:
-                        self.coins[coin.symbol] = coin
-                    else:
-                        self.coins[coin.symbol].coin_id = coin.coin_id
-                        self.coins[coin.symbol].name = coin.name
-            except Exception as e:
-                self.logger.error(e)
-            self.ready = True
-            time.sleep(650)
-
     def get_coin_def(self, symbol, raises=True):
         c = self.coins.get(symbol.lower())
         if not c and raises:
@@ -100,6 +83,23 @@ class CoinGeckoExchange(Exchange):
         self.name = "coingecko"
         threading.Thread(target=self.get_coins).start()
 
+    def get_coins(self):
+        while True:
+            try:
+                response = self.call(self.base_url + self.coins_path)
+                for coin in self.parse_coins_response(response):
+                    if coin.symbol in self.hard_coins and coin.coin_id != self.hard_coins[coin.symbol]:
+                        continue
+                    if coin.symbol not in self.coins:
+                        self.coins[coin.symbol] = coin
+                    else:
+                        self.coins[coin.symbol].coin_id = coin.coin_id
+                        self.coins[coin.symbol].name = coin.name
+            except Exception as e:
+                self.logger.error(e)
+            self.ready = True
+            time.sleep(650)
+
     def get_ticker_range(self, coins):
         l = ",".join(coins.keys())
         tickers = self.call(self.base_url + self.ticker_path.format(l))
@@ -108,7 +108,7 @@ class CoinGeckoExchange(Exchange):
     def parse_ticker(self, d):
         price = d['usd']
         perc = d['usd_24h_change']
-        return price, round(perc, 2) if perc else "N/A"
+        return price, perc
 
     def parse_coins_response(self, resp):
         if not isinstance(resp, list):
@@ -117,7 +117,7 @@ class CoinGeckoExchange(Exchange):
         parsed_coins = []
         for c in resp:
             try:
-                parsed_coins.append(Coin(c['id'], c['symbol'], c['name']))
+                parsed_coins.append(Coin(c['id'], c['symbol'], c['name'], exchange=self.name))
             except Exception as e:
                 self.logger.error(e)
         return parsed_coins
@@ -142,7 +142,7 @@ class KucoinExchange(Exchange):
                         continue
                     s = s.split('-')[0]
                     if s not in self.coins:
-                        self.coins[s] = Coin(coin['symbol'], symbol=s)
+                        self.coins[s] = Coin(coin['symbol'], symbol=s, exchange=self.name)
                     else:
                         self.coins[s].coin_id = coin['symbol']
                     self.coins[s].update(float(coin['last']), float(coin['changeRate']))
