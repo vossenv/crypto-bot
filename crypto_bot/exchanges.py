@@ -59,9 +59,9 @@ class Exchange:
             self.ready = True
             time.sleep(650)
 
-    def get_coin_def(self, symbol):
+    def get_coin_def(self, symbol, raises=True):
         c = self.coins.get(symbol.lower())
-        if not c:
+        if not c and raises:
             raise CoinNotFoundException(symbol, self.name)
         return c
 
@@ -97,7 +97,7 @@ class CoinGeckoExchange(Exchange):
         super().__init__(config)
         self.coins_path = "/coins/list"
         self.ticker_path = "/simple/price?ids={}&vs_currencies=usd&include_24hr_change=true"
-        self.name = "Coin Gecko"
+        self.name = "coingecko"
         threading.Thread(target=self.get_coins).start()
 
     def get_ticker_range(self, coins):
@@ -129,7 +129,7 @@ class KucoinExchange(Exchange):
         super().__init__(config)
         self.coins_path = "/api/v1/market/allTickers"
         self.update_rate = config['update_rate']
-        self.name = "Kucoin"
+        self.name = "kucoin"
         threading.Thread(target=self.get_coins).start()
 
     def get_coins(self):

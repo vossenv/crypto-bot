@@ -5,7 +5,7 @@ import time
 from random import random
 
 import discord
-from discord.ext.commands import Bot, MissingRequiredArgument
+from discord.ext.commands import Bot, MissingRequiredArgument, CommandNotFound
 
 from crypto_bot.error import CoinNotFoundException
 
@@ -130,9 +130,17 @@ def create_bot(token, coin, chat_id, command_roles, indexer):
     async def get_price(ctx, symbol):
         try:
             c = bot.indexer.get_coin(symbol, wait=True)
-            await ctx.send("{}/{}: ${}, change: {}%".format(symbol.upper(), c.name, c.price, c.perc))
+            msg = "{}/{}: ${}, change: {}% - indexed from {}"\
+                .format(symbol.upper(), c.name, c.price, c.perc, c.last_exchange)
+            await ctx.send(msg)
         except Exception as e:
             await ctx.send("Error: {}".format(e))
+
+    @bot.event
+    async def on_command_error(ctx, error):
+        if isinstance(error, CommandNotFound):
+            await ctx.send(error.args[0])
+        raise error
 
     @set_coin.error
     async def on_error(ctx, error):
