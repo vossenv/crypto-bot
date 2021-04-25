@@ -31,7 +31,7 @@ class PriceIndexer:
         for e in exchanges:
             if e.name == 'coingecko':
                 self.info_exchange = e
-        self.exchanges_by_priority = sorted(exchanges, key=lambda x: x.priority, reverse=True)
+        self.exchanges_by_priority = sorted(exchanges, key=lambda x: x.priority)
         self.update_rate = update_rate
         self.coins = {}
         self.logger = logging.getLogger("indexer")
@@ -84,7 +84,7 @@ class PriceIndexer:
                 remaining -= e.update_list
                 threads.append(threading.Thread(target=self.get_coins_from_exchange, args=(e,)))
             [t.start() for t in threads]
-            [t.join() for t in threads]
+            #[t.join() for t in threads]
         except Exception as e:
             self.logger.error(e)
 
