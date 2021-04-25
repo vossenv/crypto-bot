@@ -15,7 +15,6 @@ class Exchange:
 
     def __init__(self, config):
         self.priority = int(config['priority'])
-        self.name = config['name']
         self.base_url = config['api_url']
         self.coins = {}
         self.logger = logging.getLogger("connector")
@@ -86,6 +85,13 @@ class Exchange:
             raise CoinNotFoundException(symbol)
         return c
 
+    @classmethod
+    def create(self, name, config):
+        if name.lower() == "coingecko":
+            return CoinGeckoExchange(config)
+        else:
+            raise ValueError("Unknown exchange: {}".format(name))
+
 
 
 class CoinGeckoExchange(Exchange):
@@ -94,7 +100,7 @@ class CoinGeckoExchange(Exchange):
     }
 
     def __init__(self, config):
-        super(Exchange, self).__init__(config)
+        super().__init__(config)
 
     def call(self, url, method="GET", headers=None, data=None, json=True):
         r = requests.request(method=method, url=url, data=data or {}, headers=headers or {})
