@@ -15,6 +15,7 @@ class Coin:
         self.perc = 0
         self.direction = ""
         self.last_exchange = exchange
+        self.info = {}
 
     def update(self, price, perc, exchange=None):
         self.price = float(price)
@@ -55,19 +56,24 @@ class PriceIndexer:
                 pass
         if not c:
             raise CoinNotFoundException(symbol)
-        if self.info_exchange and not c.name:
+        if self.info_exchange:
             try:
                 c.name = self.info_exchange.get_coin_def(symbol).name
             except Exception as e:
                 self.logger.error("Error setting coin {} name {}".format(c.symbol, e))
         self.coins[symbol.lower()] = c
-
-    def get_coin(self, symbol, wait=False):
+        self.info_exchange.get_coin_info('doge')
+    def get_coin(self, symbol, wait=False, info=False):
         symbol = symbol.lower()
         if symbol not in self.coins:
             self.add_new_coin(symbol)
             if wait:
                 self.update_coins(wait)
+            if info:
+                if self.info_exchange:
+                    self.coins[symbol].info = self.info_exchange.get_coin_info(symbol)
+                else:
+                    raise AssertionError("Coingecko API not present, info for {} not available".format(symbol))
         return self.coins[symbol]
 
     def run(self):

@@ -130,9 +130,54 @@ def create_bot(token, coin, chat_id, command_roles, indexer):
     async def get_price(ctx, symbol):
         try:
             c = bot.indexer.get_coin(symbol, wait=True)
-            msg = "{}/{}: ${}, change: {}% - indexed from {}"\
+            msg = "{}/{}: ${}, change: {}% - indexed from {}" \
                 .format(symbol.upper(), c.name or c.coin_id, c.price, c.perc, c.last_exchange)
             await ctx.send(msg)
+        except Exception as e:
+            await ctx.send("Error: {}".format(e))
+
+    @bot.command(name='info', help='Get coin info. Usage: 1[#] info DOGE - # indicates bot number')
+    async def get_info(ctx, symbol):
+        try:
+            c = bot.indexer.get_coin(symbol, wait=True, info=True)
+            message = \
+                """
+**Ticker**: {ticker}
+**Price**: ${price} / {change} %
+**Current Index**: {exchange}
+**Homepage**: <{homepage}>
+**Coingecko**: <{coingecko}>
+**Development**: {repos}  
+                """
+            repos = c.info['repos']
+            if repos:
+                repos = ["<{}>".format(z) for z in c.info['repos']]
+                if len(repos) > 1:
+                    repos = "\n" + "\n".join(repos)
+                else:
+                    repos = repos[0]
+
+            msg = message.format(
+                image=c.info['image'],
+                ticker=symbol.upper(),
+                price=c.price,
+                change=c.perc,
+                exchange=c.last_exchange,
+                homepage=c.info['homepage'],
+                coingecko=c.info['coingecko'],
+                repos=repos or "None provided"
+            )
+            await ctx.send(c.info['image'])
+            await ctx.send(msg)
+            desc = c.info['description']
+            message = "**Description**: \n{description}"
+            if not desc:
+                await ctx.send("**Description**: None provided")
+                return
+            if len(desc) > 500:
+                message += "... \nTruncated - for a longer description, see <{}> ".format(c.info['coingecko'])
+            await ctx.send(message.format(description=desc[0:500]))
+
         except Exception as e:
             await ctx.send("Error: {}".format(e))
 
