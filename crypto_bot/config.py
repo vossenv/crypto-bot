@@ -38,6 +38,7 @@ class ConfigLoader:
                     'api_url': str
                 },
                 Optional('kucoin'): {
+                    'update_rate': Or(float, int),
                     'priority': int,
                     'api_url': str
                 }

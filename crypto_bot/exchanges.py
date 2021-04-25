@@ -14,6 +14,7 @@ class Exchange:
     def __init__(self, config):
         self.priority = int(config['priority'])
         self.base_url = config['api_url']
+        self.name = None
         self.coins = {}
         self.logger = logging.getLogger("connector")
         self.ready = False
@@ -39,7 +40,6 @@ class Exchange:
                 coins[coin.coin_id] = coin
             except CoinNotFoundException:
                 continue
-
         return self.get_ticker_range(coins)
 
     def get_coins(self):
@@ -62,11 +62,8 @@ class Exchange:
     def get_coin_def(self, symbol):
         c = self.coins.get(symbol.lower())
         if not c:
-            raise CoinNotFoundException(symbol)
+            raise CoinNotFoundException(symbol, self.name)
         return c
-
-    def start_coin_reads(self):
-        threading.Thread(target=self.get_coins).start()
 
     def get_ticker_range(self, coins):
         pass
@@ -100,7 +97,8 @@ class CoinGeckoExchange(Exchange):
         super().__init__(config)
         self.coins_path = "/coins/list"
         self.ticker_path = "/simple/price?ids={}&vs_currencies=usd&include_24hr_change=true"
-        self.start_coin_reads()
+        self.name = "Coin Gecko"
+        threading.Thread(target=self.get_coins).start()
 
     def get_ticker_range(self, coins):
         l = ",".join(coins.keys())
@@ -126,36 +124,32 @@ class CoinGeckoExchange(Exchange):
 
 
 class KucoinExchange(Exchange):
-    hard_coins = {
-        'one': 'harmony'
-    }
 
     def __init__(self, config):
         super().__init__(config)
         self.coins_path = "/api/v1/market/allTickers"
-        self.ticker_path = "/simple/price?ids={}&vs_currencies=usd&include_24hr_change=true"
-        self.start_coin_reads()
+        self.update_rate = config['update_rate']
+        self.name = "Kucoin"
+        threading.Thread(target=self.get_coins).start()
 
-    def get_ticker_range(self, coins):
-        l = ",".join(coins.keys())
-
-        tickers = self.call(self.base_url + self.ticker_path.format(l))
-        return {coins[t].symbol: self.parse_ticker(d) for t, d in tickers.items()}
-
-    def parse_ticker(self, d):
-        price = d['usd']
-        perc = d['usd_24h_change']
-        return price, round(perc, 2) if perc else "N/A"
-
-    def parse_coins_response(self, resp):
-        if not 'ticker' in resp['data']:
-            raise AssertionError("Response is not a list of coins")
-
-        parsed_coins = []
-        for c in resp['data']['ticker']:
+    def get_coins(self):
+        while True:
             try:
-                symbol = c['symbol'].split('-')[0]
-                parsed_coins.append(Coin(c['symbol'], symbol=symbol))
+                response = self.call(self.base_url + self.coins_path)
+                for coin in response['data']['ticker']:
+                    s = coin['symbol'].lower()
+                    if 'usdt' not in s:
+                        continue
+                    s = s.split('-')[0]
+                    if s not in self.coins:
+                        self.coins[s] = Coin(coin['symbol'], symbol=s)
+                    else:
+                        self.coins[s].coin_id = coin['symbol']
+                    self.coins[s].update(float(coin['last']), float(coin['changeRate']))
             except Exception as e:
                 self.logger.error(e)
-        return parsed_coins
+            self.ready = True
+            time.sleep(self.update_rate)
+
+    def get_ticker_range(self, symbols):
+        return {v.symbol: (v.price, v.perc) for v in symbols.values()}
