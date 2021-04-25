@@ -143,6 +143,7 @@ def create_bot(token, coin, chat_id, command_roles, indexer):
             message = \
                 """
 **Ticker**: {ticker}
+**Name**: {name}
 **Price**: ${price} / {change} %
 **Current Index**: {exchange}
 **Homepage**: <{homepage}>
@@ -160,6 +161,7 @@ def create_bot(token, coin, chat_id, command_roles, indexer):
             msg = message.format(
                 image=c.info['image'],
                 ticker=symbol.upper(),
+                name=c.name,
                 price=c.price,
                 change=c.perc,
                 exchange=c.last_exchange,
