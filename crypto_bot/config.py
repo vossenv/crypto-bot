@@ -2,7 +2,7 @@ import logging.config
 import os
 
 from ruamel import yaml
-from schema import Schema, Or
+from schema import Schema, Or, Optional
 
 yaml = yaml.YAML()
 yaml.indent(sequence=4, offset=2)
@@ -10,13 +10,13 @@ yaml.indent(sequence=4, offset=2)
 from crypto_bot.resources import get_resource
 
 config_defaults = {
-    'exchanges': [],
+    'exchanges': {},
     'process': {
         'log_level': 'INFO',
         'update_rate': 3,
     },
     'discord': {
-        'home_server': None,
+        'home_server': Or(None, {}),
         'bots': {},
         'command_roles': ['everyone']
     }
@@ -32,11 +32,17 @@ class ConfigLoader:
 
     def config_schema(self) -> Schema:
         return Schema({
-            'exchanges': [{
-                'name': str,
-                'priority': int,
-                'api_url': str
-            }],
+            'exchanges': {
+                Optional('coingecko'): {
+                    'priority': int,
+                    'api_url': str
+                },
+                Optional('kucoin'): {
+                    'update_rate': Or(float, int),
+                    'priority': int,
+                    'api_url': str
+                }
+            },
             'process': {
                 'log_level': Or('info', 'debug', 'INFO', 'DEBUG'),
                 'update_rate': Or(float, int),
@@ -73,6 +79,7 @@ class ConfigLoader:
 
     def is_home_id(self, sid):
         return self.active_config['discord']['home_server'] == sid
+
 
 class ConfigValidationError(Exception):
     def __init__(self, message):

@@ -19,7 +19,7 @@ config = bots.config_loader.active_config
 logger = init_logger(config['process']['log_level'])
 logger.info("Config loaded")
 
-exchanges = [Exchange(dict(c)) for c in config['exchanges']]
+exchanges = [Exchange.create(c, dict(d)) for c, d in config['exchanges'].items()]
 indexer = PriceIndexer(exchanges, config['process']['update_rate'])
 
 indexer.wait_exchanges()
