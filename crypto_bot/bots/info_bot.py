@@ -69,14 +69,14 @@ def create_bot(token, name, command_roles, indexer):
         bot.logger.info("{} is ready!".format(bot.name))
         await bot.ready()
 
-    @bot.command(name='feed', help='Get some soup')
+    @bot.command(name='feed', help='Get some soup - !feed')
     async def feed(ctx):
         if random() >= 0.7:
             await ctx.send("You may eat today {}, Qapla'!".format(ctx.author.name))
         else:
             await ctx.send("No soup for you!")
 
-    @bot.command(name='info', help='Get coin info. Usage: 1[#] info DOGE - # indicates bot number')
+    @bot.command(name='info', help='Get coin info. Usage: !info DOGE')
     async def get_info(ctx, symbol):
         try:
             c = bot.indexer.get_coin(symbol, wait=True, info=True)
@@ -94,6 +94,7 @@ def create_bot(token, name, command_roles, indexer):
 **Homepage**: <{homepage}>
 **Coingecko**: <{coingecko}>
 **Development**: {repos}"""
+
             repos = c.info['repos']
             if repos:
                 repos = ["<{}>".format(z) for z in c.info['repos']]
@@ -117,7 +118,7 @@ def create_bot(token, name, command_roles, indexer):
             if c.info['total_coins']:
                 supply = "{:,}".format(round(c.info['total_coins']))
                 if circulating != "Unknown":
-                    mined = round(c.info['circulating_coins'] / c.info['total_coins'], 4) * 100
+                    mined = round(c.info['circulating_coins'] / c.info['total_coins'] * 100, 2)
                     mined = str(mined) + "%"
 
             msg = message.format(
@@ -157,7 +158,7 @@ def create_bot(token, name, command_roles, indexer):
         except Exception as e:
             await ctx.send("Error: {}".format(e))
 
-    @bot.command(name='price', help='Get a price. Usage: 1[#] price DOGE - # indicates bot number')
+    @bot.command(name='price', help='Get a price. Usage: !price doge')
     async def get_price(ctx, symbol):
         await bot_globals.get_symbol_price(ctx, symbol)
 
