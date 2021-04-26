@@ -2,7 +2,7 @@
 import asyncio
 import sys
 
-from crypto_bot import bots
+from crypto_bot.bots import price_bot, bot_globals
 from crypto_bot.config import ConfigLoader, init_logger
 from crypto_bot.exchanges import Exchange
 from crypto_bot.price_indexer import PriceIndexer
@@ -10,30 +10,37 @@ from crypto_bot.price_indexer import PriceIndexer
 try:
     cfg = sys.argv[1]
 except:
-    cfg = None
+    cfg = "config.yml"
 
-bot_list = []
-bots.config_loader = ConfigLoader(cfg)
-config = bots.config_loader.active_config
+bot_globals.config_loader  = ConfigLoader(cfg)
+config = bot_globals.config_loader .active_config
 
 logger = init_logger(config['process']['log_level'])
 logger.info("Config loaded")
 
 exchanges = [Exchange.create(c, dict(d)) for c, d in config['exchanges'].items()]
 indexer = PriceIndexer(exchanges, config['process']['update_rate'])
-
 indexer.wait_exchanges()
-init_coins = set(config['discord']['bots'].values())
-for c in init_coins:
-    indexer.add_new_coin(c)
 
 logger.info("Start Bots")
+price_bots = config['discord'].get('price_bots')
+info_bots = config['discord'].get('info_bots')
+
 loop = asyncio.get_event_loop()
-for i, c in enumerate(config['discord']['bots'].items()):
-    chat_id = str(i + 1) if i + 1 > 9 else "0{}".format(i + 1)
-    bot = bots.create_bot(*c, chat_id, config['discord']['command_roles'], indexer)
-    loop.create_task(bot.start())
-    bot_list.append(bot)
+bot_list = []
+
+# Load price bots
+if price_bots:
+    logger.info("Preload initial coins")
+    init_coins = price_bots.values()
+    for c in init_coins:
+        indexer.add_new_coin(c)
+
+    for i, c in enumerate(price_bots.items()):
+        chat_id = str(i + 1) if i + 1 > 9 else "0{}".format(i + 1)
+        bot = price_bot.create_bot(*c, chat_id, config['discord']['command_roles'], indexer)
+        loop.create_task(bot.start())
+        bot_list.append(bot)
 
 indexer.run()
 loop.run_forever()

@@ -8,9 +8,10 @@ from random import random
 import discord
 from discord.ext.commands import Bot, MissingRequiredArgument, CommandNotFound
 
+from crypto_bot.bots import bot_globals
 from crypto_bot.error import CoinNotFoundException
 
-config_loader = None
+
 
 
 class CoinAssociation:
@@ -25,10 +26,10 @@ class CoinAssociation:
         self.image = None
 
 
-class CryptoBot(Bot):
+class CryptoPriceBot(Bot):
 
     def __init__(self, token, coin, chat_id, command_roles, indexer, *args, **kwargs):
-        super(CryptoBot, self).__init__(*args, **kwargs)
+        super(CryptoPriceBot, self).__init__(*args, **kwargs)
         self.token = token
         self.coin = coin.upper()
         self.chat_id = chat_id
@@ -88,13 +89,13 @@ class CryptoBot(Bot):
 
 
 def create_bot(token, coin, chat_id, command_roles, indexer):
-    bot = CryptoBot(command_prefix="!{} ".format(chat_id.lstrip("0")),
-                    token=token,
-                    coin=coin,
-                    chat_id=chat_id,
-                    command_roles=command_roles,
-                    indexer=indexer,
-                    case_insensitive=True)
+    bot = CryptoPriceBot(command_prefix="!{} ".format(chat_id.lstrip("0")),
+                         token=token,
+                         coin=coin,
+                         chat_id=chat_id,
+                         command_roles=command_roles,
+                         indexer=indexer,
+                         case_insensitive=True)
 
     @bot.event
     async def on_ready():
@@ -117,8 +118,9 @@ def create_bot(token, coin, chat_id, command_roles, indexer):
         try:
             await ctx.send("Attempting to set coin to {}".format(symbol))
             c = await bot.set_coin(ctx.guild.id, symbol)
-            if config_loader.is_home_id(ctx.guild.id):
-                config_loader.update_bot_coin(bot.token, symbol)
+            cl = bot_globals.config_loader
+            if cl.is_home_id(ctx.guild.id):
+                cl.update_bot_coin(bot.token, symbol)
             await ctx.send("Set bot #{} to {} - {} successfully! - indexed from {}"
                            .format(bot.chat_id, c.symbol.upper(), c.name or c.coin_id, c.last_exchange))
         except CoinNotFoundException as e:

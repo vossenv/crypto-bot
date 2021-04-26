@@ -9,23 +9,11 @@ yaml.indent(sequence=4, offset=2)
 
 from crypto_bot.resources import get_resource
 
-config_defaults = {
-    'exchanges': {},
-    'process': {
-        'log_level': 'INFO',
-        'update_rate': 3,
-    },
-    'discord': {
-        'home_server': Or(None, {}),
-        'bots': {},
-        'command_roles': ['everyone']
-    }
-}
 
 
 class ConfigLoader:
 
-    def __init__(self, config_path="config.yml"):
+    def __init__(self, config_path):
         self.config_path = config_path
         self.active_config = self.load_config(config_path)
         self.save_config()
@@ -49,15 +37,15 @@ class ConfigLoader:
             },
             'discord': {
                 'home_server': int,
-                'bots': {str: str},
+                Optional('price_bots'): {str: str},
+                Optional('info_bots'): {str: str},
                 'command_roles': Or([str], {str})
             }
         })
 
     def load_config(self, path):
-        cfg = config_defaults
         with open(path) as f:
-            cfg.update(yaml.load(f))
+            cfg = yaml.load(f)
         self._validate(cfg)
 
         return cfg
@@ -66,6 +54,13 @@ class ConfigLoader:
         from schema import SchemaError
         try:
             self.config_schema().validate(raw_config)
+
+            price_bots = raw_config['discord'].get('price_bots')
+            info_bots = raw_config['discord'].get('info_bots')
+
+            if not price_bots and not info_bots:
+                raise ConfigValidationError("No bots were defined - please define at least 1 price or info bot")
+
         except SchemaError as e:
             raise ConfigValidationError(e.code) from e
 
@@ -74,7 +69,7 @@ class ConfigLoader:
             yaml.dump(self.active_config, f)
 
     def update_bot_coin(self, token, coin):
-        self.active_config['discord']['bots'][token] = coin.upper()
+        self.active_config['discord']['price_bots'][token] = coin.upper()
         self.save_config()
 
     def is_home_id(self, sid):
