@@ -1,7 +1,5 @@
 import datetime
 import logging
-import threading
-import time
 from random import random
 
 import discord
@@ -26,10 +24,11 @@ class CoinAssociation:
 
 class CryptoBot(Bot):
 
-    def __init__(self, token, name, command_roles, indexer, *args, **kwargs):
+    def __init__(self, token, name, avatar, command_roles, indexer, *args, **kwargs):
         super(CryptoBot, self).__init__(*args, **kwargs)
         self.token = token
         self.name = name
+        self.avatar = avatar
         self.command_roles = {c.lower() for c in command_roles}
         self.logger = logging.getLogger("{} bot".format(self.name))
         self.logger.info("Starting {} bot...".format(self.name))
@@ -50,16 +49,20 @@ class CryptoBot(Bot):
             act = discord.Activity(type=discord.ActivityType.watching, name="you")
             await m[0].edit(nick="{}".format(self.name))
             await self.change_presence(status=discord.Status.online, activity=act)
-
+            if self.avatar:
+                self.logger.info("Updating avatar to: {}".format(self.avatar))
+                with open(self.avatar, 'rb') as image:
+                    await self.user.edit(avatar=image.read())
 
     async def start(self):
         await super().start(self.token)
 
 
-def create_bot(token, name, command_roles, indexer):
+def create_bot(token, name, avatar, command_roles, indexer):
     bot = CryptoBot(command_prefix="!",
                     token=token,
                     name=name,
+                    avatar=avatar,
                     command_roles=command_roles,
                     indexer=indexer,
                     case_insensitive=True)

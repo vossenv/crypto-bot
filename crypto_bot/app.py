@@ -12,8 +12,8 @@ try:
 except:
     cfg = "config.yml"
 
-bot_globals.config_loader  = ConfigLoader(cfg)
-config = bot_globals.config_loader .active_config
+bot_globals.config_loader = ConfigLoader(cfg)
+config = bot_globals.config_loader.active_config
 
 logger = init_logger(config['process']['log_level'])
 logger.info("Config loaded")
@@ -38,14 +38,15 @@ if price_bots:
 
     for i, c in enumerate(price_bots.items()):
         chat_id = str(i + 1) if i + 1 > 9 else "0{}".format(i + 1)
-        bot = price_bot.create_bot(*c, chat_id, config['discord']['command_roles'], indexer)
+        bot = price_bot.create_bot(*c, config['discord'].get('price_bot_avatar'),
+                                   chat_id, config['discord']['command_roles'], indexer)
         loop.create_task(bot.start())
         bot_list.append(bot)
 
 # Load info bots
 if info_bots:
-    for i, c in enumerate(info_bots.items()):
-        bot = info_bot.create_bot(*c, config['discord']['command_roles'], indexer)
+    for c, d in info_bots.items():
+        bot = info_bot.create_bot(c, d['name'], d.get('avatar'), config['discord']['command_roles'], indexer)
         loop.create_task(bot.start())
         bot_list.append(bot)
 

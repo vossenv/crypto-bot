@@ -24,16 +24,18 @@ class CoinAssociation:
 
 class CryptoPriceBot(Bot):
 
-    def __init__(self, token, coin, chat_id, command_roles, indexer, *args, **kwargs):
+    def __init__(self, token, coin, avatar, chat_id, command_roles, indexer, *args, **kwargs):
         super(CryptoPriceBot, self).__init__(*args, **kwargs)
         self.token = token
         self.coin = coin.upper()
+        self.avatar = avatar
         self.chat_id = chat_id
         self.command_roles = {c.lower() for c in command_roles}
         self.associations = {}
         self.logger = logging.getLogger("{} bot".format(coin))
         self.logger.info("Starting {} bot...".format(self.coin))
         self.indexer = indexer
+
 
     async def set_coin(self, guild, symbol):
         symbol = str(symbol).lower()
@@ -43,6 +45,11 @@ class CryptoPriceBot(Bot):
         return coin
 
     async def ready(self):
+        if self.avatar:
+            self.logger.info("Updating avatar to: {}".format(self.avatar))
+            with open(self.avatar, 'rb') as image:
+                await self.user.edit(avatar=image.read())
+                self.logger.info("Updated avatar")
         threading.Thread(target=self.update_memberships).start()
         await self.status_loop()
 
@@ -78,10 +85,11 @@ class CryptoPriceBot(Bot):
         await super().start(self.token)
 
 
-def create_bot(token, coin, chat_id, command_roles, indexer):
+def create_bot(token, coin, avatar, chat_id, command_roles, indexer):
     bot = CryptoPriceBot(command_prefix="!{} ".format(chat_id.lstrip("0")),
                          token=token,
                          coin=coin,
+                         avatar=avatar,
                          chat_id=chat_id,
                          command_roles=command_roles,
                          indexer=indexer,

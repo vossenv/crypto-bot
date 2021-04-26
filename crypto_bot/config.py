@@ -10,7 +10,6 @@ yaml.indent(sequence=4, offset=2)
 from crypto_bot.resources import get_resource
 
 
-
 class ConfigLoader:
 
     def __init__(self, config_path):
@@ -37,8 +36,12 @@ class ConfigLoader:
             },
             'discord': {
                 'home_server': int,
+                Optional('price_bot_avatar'): str,
                 Optional('price_bots'): {str: str},
-                Optional('info_bots'): {str: str},
+                Optional('info_bots'): {str: {
+                    'name': str,
+                    Optional('avatar'): str}
+                },
                 'command_roles': Or([str], {str})
             }
         })
@@ -47,6 +50,25 @@ class ConfigLoader:
         with open(path) as f:
             cfg = yaml.load(f)
         self._validate(cfg)
+
+        paths = []
+        info_bots = cfg['discord'].get('info_bots')
+        if info_bots:
+            for b in info_bots.values():
+                av = b.get('avatar')
+                if av:
+                    paths.append(av)
+
+        price_bots = cfg['discord'].get('price_bots')
+        if price_bots:
+            av = cfg['discord'].get('price_bot_avatar')
+            if av:
+                paths.append(av)
+
+        for p in paths:
+            if not os.path.exists(p):
+                raise FileNotFoundError(
+                    "Avatar '{}' could not be found. Please check the path".format(p))
 
         return cfg
 
