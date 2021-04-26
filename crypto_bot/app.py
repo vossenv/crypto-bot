@@ -2,7 +2,7 @@
 import asyncio
 import sys
 
-from crypto_bot.bots import price_bot, bot_globals
+from crypto_bot.bots import price_bot, bot_globals, info_bot
 from crypto_bot.config import ConfigLoader, init_logger
 from crypto_bot.exchanges import Exchange
 from crypto_bot.price_indexer import PriceIndexer
@@ -19,7 +19,7 @@ logger = init_logger(config['process']['log_level'])
 logger.info("Config loaded")
 
 exchanges = [Exchange.create(c, dict(d)) for c, d in config['exchanges'].items()]
-indexer = PriceIndexer(exchanges, config['process']['update_rate'])
+bot_globals.indexer = indexer = PriceIndexer(exchanges, config['process']['update_rate'])
 indexer.wait_exchanges()
 
 logger.info("Start Bots")
@@ -39,6 +39,13 @@ if price_bots:
     for i, c in enumerate(price_bots.items()):
         chat_id = str(i + 1) if i + 1 > 9 else "0{}".format(i + 1)
         bot = price_bot.create_bot(*c, chat_id, config['discord']['command_roles'], indexer)
+        loop.create_task(bot.start())
+        bot_list.append(bot)
+
+# Load info bots
+if info_bots:
+    for i, c in enumerate(info_bots.items()):
+        bot = info_bot.create_bot(*c, config['discord']['command_roles'], indexer)
         loop.create_task(bot.start())
         bot_list.append(bot)
 
