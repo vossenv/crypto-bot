@@ -53,6 +53,7 @@ class CryptoBot(Bot):
                 self.logger.info("Updating avatar to: {}".format(self.avatar))
                 with open(self.avatar, 'rb') as image:
                     await self.user.edit(avatar=image.read())
+                    self.logger.info("Updated avatar")
 
     async def start(self):
         await super().start(self.token)
