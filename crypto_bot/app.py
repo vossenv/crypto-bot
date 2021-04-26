@@ -46,7 +46,8 @@ if price_bots:
 # Load info bots
 if info_bots:
     for c, d in info_bots.items():
-        bot = info_bot.create_bot(c, d['name'], d.get('avatar'), config['discord']['command_roles'], indexer)
+        bot = info_bot.create_bot(c, d['name'], d.get('avatar'), d.get('countdowns'),
+                                  config['discord']['command_roles'], indexer)
         loop.create_task(bot.start())
         bot_list.append(bot)
 

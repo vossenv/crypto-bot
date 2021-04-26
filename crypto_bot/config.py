@@ -40,7 +40,13 @@ class ConfigLoader:
                 Optional('price_bots'): {str: str},
                 Optional('info_bots'): {str: {
                     'name': str,
-                    Optional('avatar'): str}
+                    Optional('avatar'): str,
+                    Optional('countdowns'): [{
+                        'alert_time': str,
+                        'name': str,
+                        Optional('alert_date'): str,
+                        Optional('message'): str,
+                    }]}
                 },
                 'command_roles': Or([str], {str})
             }

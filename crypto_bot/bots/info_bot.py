@@ -1,8 +1,13 @@
-import datetime
 import logging
+import threading
+import time
+from copy import deepcopy
+from datetime import datetime, timedelta
 from random import random
 
 import discord
+import pytz
+from dateutil.parser import parse, ParserError
 from discord.ext.commands import Bot, CommandNotFound
 
 from crypto_bot.bots import bot_globals
@@ -22,13 +27,72 @@ class CoinAssociation:
         self.image = None
 
 
+class Countdown():
+
+    def __init__(self, alert_time, name, alert_date=None, message=None):
+
+        self.alert_date = ad = self.parse_date(alert_date).date() if alert_date else None
+        self.alert_time = self.parse_date(alert_time)
+        if self.alert_date is not None:
+            self.alert_time = self.alert_time.replace(year=ad.year, month=ad.month, day=ad.day)
+        self.message = message
+        self.name = name
+        self.logger = logging.getLogger(name)
+        self.notifications = [5, 0]
+        threading.Thread(target=self.run).start()
+
+        self.check_time()
+
+    def check_time(self) -> timedelta:
+        now = datetime.utcnow()
+        if self.alert_date is None:
+            z = datetime.combine(now.date(), self.alert_time.time()) - now
+            if z.total_seconds() < 0:
+                z = datetime.combine(now.date() + timedelta(days=1), self.alert_time.time()) - now
+            return z
+        return self.alert_time - pytz.timezone("UTC").localize(now)
+
+    def parse_date(self, date_str) -> datetime:
+        try:
+            date_str = parse(date_str, ignoretz=True)
+            return pytz.timezone("UTC").localize(date_str)
+        except ParserError:
+            raise AssertionError(
+                "Invalid time format {} - please specific in 24 hour %H:%M:%S".format(date_str))
+
+    def get_delta(self):
+        return round(self.check_time().total_seconds() / 60)
+
+    def get_message(self):
+        return "Alert! {} minutes to {}!".format(self.get_delta(), self.name)
+
+    def run(self):
+        timeslots = deepcopy(self.notifications)
+        while True:
+            t = self.get_delta()
+            if timeslots and t <= timeslots[0]:
+                timeslots.pop(0)
+                if not timeslots:
+                    msg = self.message
+                    self.logger.info(msg)
+                    if not self.alert_date:
+                        timeslots = deepcopy(self.notifications)
+                    else:
+                        break
+                else:
+                    msg = self.get_message()
+                    self.logger.info(msg)
+            time.sleep(30)
+
+
 class CryptoBot(Bot):
 
-    def __init__(self, token, name, avatar, command_roles, indexer, *args, **kwargs):
+    def __init__(self, token, name, avatar, countdowns, command_roles, indexer, *args, **kwargs):
         super(CryptoBot, self).__init__(*args, **kwargs)
         self.token = token
         self.name = name
         self.avatar = avatar
+        self.countdowns = [Countdown(**c) for c in countdowns]
         self.command_roles = {c.lower() for c in command_roles}
         self.logger = logging.getLogger("{} bot".format(self.name))
         self.logger.info("Starting {} bot...".format(self.name))
@@ -59,11 +123,12 @@ class CryptoBot(Bot):
         await super().start(self.token)
 
 
-def create_bot(token, name, avatar, command_roles, indexer):
+def create_bot(token, name, avatar, countdowns, command_roles, indexer):
     bot = CryptoBot(command_prefix="!",
                     token=token,
                     name=name,
                     avatar=avatar,
+                    countdowns=countdowns,
                     command_roles=command_roles,
                     indexer=indexer,
                     case_insensitive=True)
@@ -108,7 +173,7 @@ def create_bot(token, name, avatar, command_roles, indexer):
                     repos = repos[0]
 
             d = c.info['ath_date']
-            if isinstance(d, datetime.datetime):
+            if isinstance(d, datetime):
                 d = d.strftime('%m/%d/%Y')
 
             mined = "N/A"
