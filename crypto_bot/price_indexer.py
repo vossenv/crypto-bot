@@ -62,18 +62,19 @@ class PriceIndexer:
             except Exception as e:
                 self.logger.error("Error setting coin {} name {}".format(c.symbol, e))
         self.coins[symbol.lower()] = c
-        #self.info_exchange.get_coin_info('doge')
+        # self.info_exchange.get_coin_info('doge')
+
     def get_coin(self, symbol, wait=False, info=False):
         symbol = symbol.lower()
         if symbol not in self.coins:
             self.add_new_coin(symbol)
             if wait:
                 self.update_coins(wait)
-            if info:
-                if self.info_exchange:
-                    self.coins[symbol].info = self.info_exchange.get_coin_info(symbol)
-                else:
-                    raise AssertionError("Coingecko API not present, info for {} not available".format(symbol))
+        if info:
+            if self.info_exchange:
+                self.coins[symbol].info = self.info_exchange.get_coin_info(symbol)
+            else:
+                raise AssertionError("Coingecko API not present, info for {} not available".format(symbol))
         return self.coins[symbol]
 
     def run(self):
@@ -86,15 +87,14 @@ class PriceIndexer:
 
     def update_coins(self, wait=False):
         try:
-            threads = []
             remaining = set(self.coins.keys())
             for e in self.exchanges_by_priority:
                 e.update_list = remaining.intersection(set(e.coins.keys()))
                 remaining -= e.update_list
-                threads.append(threading.Thread(target=self.get_coins_from_exchange, args=(e,)))
-            [t.start() for t in threads]
-            if wait:
-                [t.join() for t in threads]
+                if wait:
+                    self.get_coins_from_exchange(e)
+                else:
+                    threading.Thread(target=self.get_coins_from_exchange, args=(e,)).start()
         except Exception as e:
             self.logger.error(e)
 
