@@ -47,6 +47,7 @@ class ConfigLoader:
                         'schedule': [Or(float, int)],
                         Optional('alert_date'): str,
                         Optional('message'): str,
+                        Optional('channels'): [int]
                     }]}
                 },
                 'command_roles': Or([str], {str})

@@ -1,7 +1,6 @@
+import asyncio
 import logging
-import threading
-import time
-from copy import deepcopy
+import math
 from datetime import datetime, timedelta
 from random import random
 
@@ -29,7 +28,7 @@ class CoinAssociation:
 
 class Countdown():
 
-    def __init__(self, alert_time, name, schedule, alert_date=None, message=None):
+    def __init__(self, alert_time, name, schedule, callback, channels=None, alert_date=None, message=None):
 
         self.alert_date = ad = self.parse_date(alert_date).date() if alert_date else None
         self.alert_time = self.parse_date(alert_time)
@@ -38,19 +37,14 @@ class Countdown():
         self.message = message
         self.name = name
         self.logger = logging.getLogger(name)
-        self.schedule = sorted(schedule, reverse=True)
-        threading.Thread(target=self.run).start()
+        self.channels = channels
+        self.callback = callback
+        self.schedule = schedule
+        self.notifications = self.create_notifications()
+        self.notifications.append(self.alert_time)
 
-        self.check_time()
-
-    def check_time(self) -> timedelta:
-        now = datetime.utcnow()
-        if self.alert_date is None:
-            z = datetime.combine(now.date(), self.alert_time.time()) - now
-            if z.total_seconds() < 0:
-                z = datetime.combine(now.date() + timedelta(days=1), self.alert_time.time()) - now
-            return z
-        return self.alert_time - pytz.timezone("UTC").localize(now)
+    def create_notifications(self):
+        return [self.alert_time - timedelta(minutes=t) for t in self.schedule]
 
     def parse_date(self, date_str) -> datetime:
         try:
@@ -60,29 +54,34 @@ class Countdown():
             raise AssertionError(
                 "Invalid time format {} - please specific in 24 hour %H:%M:%S".format(date_str))
 
-    def get_delta(self):
-        return round(self.check_time().total_seconds() / 60)
+    def now(self) -> datetime:
+        return pytz.timezone("UTC").localize(datetime.utcnow())
 
-    def get_message(self):
-        return "Alert! {} minutes to {}!".format(self.get_delta(), self.name)
+    def delta_to_event(self):
+        return round((self.alert_time - self.now()).total_seconds() / 60)
 
-    def run(self):
-        timeslots = deepcopy(self.schedule)
+    async def send_message(self, msg):
+        await self.callback(msg, self.channels)
+
+    async def run_loop(self):
         while True:
-            t = self.get_delta()
-            if timeslots and t <= timeslots[0]:
-                timeslots.pop(0)
-                if not timeslots:
-                    msg = self.message
-                    self.logger.info(msg)
-                    if not self.alert_date:
-                        timeslots = deepcopy(self.schedule)
+            now = self.now()
+            for e in self.notifications:
+                delta = now - e
+                m = math.floor(delta.total_seconds() / 60)
+                if m == 0:
+                    if e == self.alert_time:
+                        await self.send_message(self.message)
                     else:
-                        break
-                else:
-                    msg = self.get_message()
-                    self.logger.info(msg)
-            time.sleep(30)
+                        await self.send_message("**Alert!** {} minutes to {}!".format(self.delta_to_event(), self.name))
+                    self.notifications.remove(e)
+                    if not self.alert_date:
+                        self.notifications.append(e.replace(day=now.day + 1))
+                elif m > 0:
+                    self.notifications.remove(e)
+            if not self.notifications:
+                break
+            await asyncio.sleep(25)
 
 
 class CryptoBot(Bot):
@@ -92,7 +91,7 @@ class CryptoBot(Bot):
         self.token = token
         self.name = name
         self.avatar = avatar
-        self.countdowns = [Countdown(**c) for c in countdowns]
+        self.countdowns = [Countdown(**c, callback=self.message_channels) for c in countdowns]
         self.command_roles = {c.lower() for c in command_roles}
         self.logger = logging.getLogger("{} bot".format(self.name))
         self.logger.info("Starting {} bot...".format(self.name))
@@ -100,6 +99,15 @@ class CryptoBot(Bot):
 
     async def ready(self):
         await self.update_nick()
+        for c in self.countdowns:
+            asyncio.ensure_future(c.run_loop())
+
+    async def message_channels(self, msg, channels=None):
+        for c in channels:
+            try:
+                await self.get_channel(c).send(msg)
+            except Exception as e:
+                self.logger.error(e)
 
     async def update_nick(self):
         for g in self.guilds:
