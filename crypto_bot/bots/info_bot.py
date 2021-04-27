@@ -29,7 +29,7 @@ class CoinAssociation:
 
 class Countdown():
 
-    def __init__(self, alert_time, name, alert_date=None, message=None):
+    def __init__(self, alert_time, name, schedule, alert_date=None, message=None):
 
         self.alert_date = ad = self.parse_date(alert_date).date() if alert_date else None
         self.alert_time = self.parse_date(alert_time)
@@ -38,7 +38,7 @@ class Countdown():
         self.message = message
         self.name = name
         self.logger = logging.getLogger(name)
-        self.notifications = [5, 0]
+        self.schedule = sorted(schedule, reverse=True)
         threading.Thread(target=self.run).start()
 
         self.check_time()
@@ -67,7 +67,7 @@ class Countdown():
         return "Alert! {} minutes to {}!".format(self.get_delta(), self.name)
 
     def run(self):
-        timeslots = deepcopy(self.notifications)
+        timeslots = deepcopy(self.schedule)
         while True:
             t = self.get_delta()
             if timeslots and t <= timeslots[0]:
@@ -76,7 +76,7 @@ class Countdown():
                     msg = self.message
                     self.logger.info(msg)
                     if not self.alert_date:
-                        timeslots = deepcopy(self.notifications)
+                        timeslots = deepcopy(self.schedule)
                     else:
                         break
                 else:

@@ -44,6 +44,7 @@ class ConfigLoader:
                     Optional('countdowns'): [{
                         'alert_time': str,
                         'name': str,
+                        'schedule': [Or(float, int)],
                         Optional('alert_date'): str,
                         Optional('message'): str,
                     }]}
