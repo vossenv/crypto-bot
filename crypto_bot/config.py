@@ -44,7 +44,9 @@ class ConfigLoader:
                     Optional('countdowns'): [{
                         'alert_time': str,
                         'name': str,
-                        'schedule': [Or(float, int)],
+                        Optional('schedule'): Or(
+                            [Or(float, int)],
+                            {Or(float, int): Or(str, None)}),
                         Optional('alert_date'): str,
                         Optional('message'): str,
                         Optional('channels'): [int]
