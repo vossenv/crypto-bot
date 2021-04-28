@@ -73,7 +73,11 @@ class Countdown():
                     if e == self.alert_time:
                         await self.send_message(self.message)
                     else:
-                        await self.send_message("**Alert!** {} minutes to {}!".format(self.delta_to_event(), self.name))
+                        t = self.delta_to_event()
+                        msg = "**Alert!** {} minutes to {}!".format(t, self.name)
+                        if t == 60:
+                            msg += " @everyone"
+                        await self.send_message(msg)
                     self.notifications.remove(e)
                     if not self.alert_date:
                         self.notifications.append(e.replace(day=now.day + 1))
@@ -81,7 +85,7 @@ class Countdown():
                     self.notifications.remove(e)
             if not self.notifications:
                 break
-            await asyncio.sleep(25)
+            await asyncio.sleep(5)
 
 
 class CryptoBot(Bot):
