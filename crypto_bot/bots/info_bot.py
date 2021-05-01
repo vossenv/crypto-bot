@@ -171,10 +171,32 @@ def create_bot(token, name, avatar, countdowns, command_roles, indexer):
 
     @bot.command(name='feed', help='Get some soup - !feed')
     async def feed(ctx):
-        if random() >= 0.7:
-            await ctx.send("You may eat today {}, Qapla'!".format(ctx.author.name))
-        else:
-            await ctx.send("No soup for you!")
+        try:
+            if random() >= 0.7:
+                await ctx.send("You may eat today {}, Qapla'!".format(ctx.author.name))
+            else:
+                await ctx.send("No soup for you!")
+        except Exception as e:
+            bot.logger.error("Error in commmand feed: {}".format(e))
+            await ctx.send("Error: {}".format(e))
+
+    @bot.command(name='ath', help='Get all time high - !ath')
+    async def ath(ctx, symbol):
+        try:
+            c = bot.indexer.get_coin(symbol, wait=True, info=True)
+            d = c.info['ath_date']
+            if isinstance(d, datetime):
+                d = d.strftime('%m/%d/%Y')
+            msg = "**ATH**: ${ath} on {ath_date} for {id}/{name} (as reported by CoinGecko)".format(
+                ath=c.info['ath'],
+                ath_date=d,
+                id=symbol.upper(),
+                name=c.name or c.coin_id
+            )
+            await ctx.send(msg)
+        except Exception as e:
+            bot.logger.error("Error in commmand ath: {}".format(e))
+            await ctx.send("Error: {}".format(e))
 
     @bot.command(name='info', help='Get coin info. Usage: !info DOGE')
     async def get_info(ctx, symbol):
@@ -256,6 +278,7 @@ def create_bot(token, name, avatar, countdowns, command_roles, indexer):
             await ctx.send(message.format(description=desc[0:500]))
 
         except Exception as e:
+            bot.logger.error("Error in commmand get_info: {}".format(e))
             await ctx.send("Error: {}".format(e))
 
     @bot.command(name='price', help='Get a price. Usage: !price doge')

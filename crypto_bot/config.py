@@ -22,6 +22,7 @@ class ConfigLoader:
             'exchanges': {
                 Optional('coingecko'): {
                     'priority': int,
+                    Optional('coin_overrides'): {str: str}
                 },
                 Optional('kucoin'): {
                     'update_rate': Or(float, int),

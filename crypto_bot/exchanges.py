@@ -14,10 +14,10 @@ from crypto_bot.price_indexer import Coin
 
 
 class Exchange:
-    hard_coins = {}
 
     def __init__(self, config):
         self.priority = int(config['priority'])
+        self.coin_overrides = config.get("coin_overrides") or {}
         self.name = None
         self.coins = {}
         self.logger = logging.getLogger("connector")
@@ -93,9 +93,6 @@ class MLStripper(HTMLParser):
 
 
 class CoinGeckoExchange(Exchange):
-    hard_coins = {
-        'one': 'harmony'
-    }
 
     def __init__(self, config):
         super().__init__(config)
@@ -111,7 +108,7 @@ class CoinGeckoExchange(Exchange):
             try:
                 response = self.call(self.base_url + self.coins_path)
                 for coin in self.parse_coins_response(response):
-                    if coin.symbol in self.hard_coins and coin.coin_id != self.hard_coins[coin.symbol]:
+                    if coin.symbol in self.coin_overrides and coin.coin_id != self.coin_overrides[coin.symbol]:
                         continue
                     if coin.symbol not in self.coins:
                         self.coins[coin.symbol] = coin
