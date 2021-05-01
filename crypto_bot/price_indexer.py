@@ -33,7 +33,7 @@ class PriceIndexer:
     def __init__(self, exchanges, update_rate):
         self.info_exchange = None
         for e in exchanges:
-            if e.name == 'coingecko':
+            if e.name.lower() == 'coingecko':
                 self.info_exchange = e
         self.exchanges_by_priority = sorted(exchanges, key=lambda x: x.priority)
         self.update_rate = update_rate

@@ -30,12 +30,13 @@ class Countdown():
 
     def __init__(self, alert_time, name, schedule=None, callback=None, channels=None, alert_date=None, message=None):
 
-        self.alert_date = ad = self.parse_date(alert_date).date() if alert_date else None
+        self.alert_date = self.parse_date(alert_date).date() if alert_date else None
         self.alert_time = self.parse_date(alert_time)
         if self.alert_date is not None:
-            self.alert_time = self.alert_time.replace(year=ad.year, month=ad.month, day=ad.day)
+            self.alert_time = datetime.combine(self.alert_date, self.alert_time.time())
         else:
-            self.alert_time = self.alert_time.replace(day=self.now().day)
+            self.alert_time = datetime.combine(datetime.utcnow(), self.alert_time.time())
+        self.alert_time = pytz.timezone("UTC").localize(self.alert_time)
         self.message = message
         self.name = name
         self.logger = logging.getLogger(name)
@@ -54,13 +55,13 @@ class Countdown():
     def create_notifications(self):
         return {self.alert_time - timedelta(minutes=t): m for t, m in self.schedule.items()}
 
-    def parse_date(self, date_str) -> datetime:
+    def parse_date(self, date_obj) -> datetime:
         try:
-            date_str = parse(date_str, ignoretz=True)
-            return pytz.timezone("UTC").localize(date_str)
+            date_obj = parse(date_obj, ignoretz=True)
+            return pytz.timezone("UTC").localize(date_obj)
         except ParserError:
             raise AssertionError(
-                "Invalid time format {} - please specific in 24 hour %H:%M:%S".format(date_str))
+                "Invalid time format {} - please specific in 24 hour %H:%M:%S".format(date_obj))
 
     def now(self) -> datetime:
         return pytz.timezone("UTC").localize(datetime.utcnow())
@@ -90,7 +91,10 @@ class Countdown():
                         self.logger.debug(msg)
                         await self.send_message(msg)
                     if not self.alert_date:
-                        n[t.replace(day=t.day + 1)] = n[t]
+                        new = t + timedelta(days=1)
+                        n[new] = n[t]
+                        if t == self.alert_time:
+                            self.alert_time = new
                     else:
                         self.logger.debug("Discarding old alert: {} {}".format(t, n[t]))
                     n.pop(t)
@@ -108,6 +112,8 @@ class CryptoBot(Bot):
         self.token = token
         self.name = name
         self.avatar = avatar
+        countdowns = countdowns or []
+        command_roles = command_roles or []
         self.countdowns = [Countdown(**c, callback=self.message_channels) for c in countdowns]
         self.command_roles = {c.lower() for c in command_roles}
         self.logger = logging.getLogger("{} bot".format(self.name))

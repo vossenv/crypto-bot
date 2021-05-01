@@ -1,5 +1,6 @@
 import collections
 import logging
+import re
 import threading
 import time
 from datetime import datetime
@@ -17,7 +18,6 @@ class Exchange:
 
     def __init__(self, config):
         self.priority = int(config['priority'])
-        self.base_url = config['api_url']
         self.name = None
         self.coins = {}
         self.logger = logging.getLogger("connector")
@@ -69,8 +69,10 @@ class Exchange:
         name = name.lower()
         if name == "coingecko":
             return CoinGeckoExchange(config)
-        if name == "kucoin":
+        elif name == "kucoin":
             return KucoinExchange(config)
+        elif name == "binance_us":
+            return BinanceUSExchange(config)
         else:
             raise ValueError("Unknown exchange: {}".format(name))
 
@@ -97,10 +99,11 @@ class CoinGeckoExchange(Exchange):
 
     def __init__(self, config):
         super().__init__(config)
+        self.base_url = "https://api.coingecko.com/api/v3"
         self.coins_path = "/coins/list"
         self.coins_info_path = "/coins"
         self.ticker_path = "/simple/price?ids={}&vs_currencies=usd&include_24hr_change=true"
-        self.name = "coingecko"
+        self.name = "CoinGecko"
         threading.Thread(target=self.get_coins).start()
 
     def get_coins(self):
@@ -198,9 +201,10 @@ class KucoinExchange(Exchange):
 
     def __init__(self, config):
         super().__init__(config)
+        self.base_url = "https://api.kucoin.com"
         self.coins_path = "/api/v1/market/allTickers"
         self.update_rate = config['update_rate']
-        self.name = "kucoin"
+        self.name = "KuCoin"
         threading.Thread(target=self.get_coins).start()
 
     def get_coins(self):
@@ -217,6 +221,39 @@ class KucoinExchange(Exchange):
                     else:
                         self.coins[s].coin_id = coin['symbol']
                     self.coins[s].update(float(coin['last']), float(coin['changeRate']))
+            except Exception as e:
+                self.logger.error(e)
+            self.ready = True
+            time.sleep(self.update_rate)
+
+    def get_ticker_range(self, symbols):
+        return {v.symbol: (v.price, v.perc) for v in symbols.values()}
+
+
+class BinanceUSExchange(Exchange):
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.base_url = "https://api.binance.us"
+        self.coins_path = "/api/v3/ticker/24hr"
+        self.update_rate = config['update_rate']
+        self.name = "Binance US"
+        threading.Thread(target=self.get_coins).start()
+
+    def get_coins(self):
+        while True:
+            try:
+                response = self.call(self.base_url + self.coins_path)
+                for coin in response:
+                    s = coin['symbol'].lower()
+                    if not s.endswith('usd'):
+                        continue
+                    s = re.sub('usd$', '', s)
+                    if s not in self.coins:
+                        self.coins[s] = Coin(coin['symbol'], symbol=s, exchange=self.name)
+                    else:
+                        self.coins[s].coin_id = coin['symbol']
+                    self.coins[s].update(float(coin['lastPrice']), float(coin['priceChangePercent']))
             except Exception as e:
                 self.logger.error(e)
             self.ready = True
