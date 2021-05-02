@@ -24,6 +24,8 @@ class Exchange:
         self.ready = False
         self.coins_path = None
         self.ticker_path = None
+        self.last_coin_list = set()
+        self.new_coins = {}
 
     def call(self, url, method="GET", headers=None, data=None, json=True):
         r = requests.request(method=method, url=url, data=data or {}, headers=headers or {})
@@ -46,11 +48,29 @@ class Exchange:
                 continue
         return self.get_ticker_range(coins)
 
+    #
     def get_coin_def(self, symbol, raises=True):
         c = self.coins.get(symbol.lower())
         if not c and raises:
             raise CoinNotFoundException(symbol, self.name)
         return c
+
+    def coins_ready(self):
+        if not self.ready:
+            self.ready = True
+            self.last_coin_list = set(self.coins.keys())
+
+    def get_new_coins(self):
+        if not self.ready:
+            return set()
+        current_coins = set(self.coins.keys())
+        for n in (current_coins - self.last_coin_list):
+            self.new_coins[n] = datetime.utcnow()
+        self.last_coin_list = current_coins
+        return self.new_coins
+
+    def clear_new_coins(self):
+        self.new_coins = {}
 
     def get_ticker_range(self, coins):
         pass
@@ -117,7 +137,7 @@ class CoinGeckoExchange(Exchange):
                         self.coins[coin.symbol].name = coin.name
             except Exception as e:
                 self.logger.error(e)
-            self.ready = True
+            self.coins_ready()
             time.sleep(650)
 
     def get_coin_info(self, symbol):
@@ -158,6 +178,9 @@ class CoinGeckoExchange(Exchange):
             ath_date = datetime.strptime(ath_date, '%Y-%m-%dT%H:%M:%S.%fZ')
         info_dict['ath_date'] = ath_date
         return info_dict
+
+    def get_new_coins(self):
+        return {}
 
     def strip_tags(self, html):
         s = MLStripper()
@@ -220,7 +243,7 @@ class KucoinExchange(Exchange):
                     self.coins[s].update(float(coin['last']), float(coin['changeRate']))
             except Exception as e:
                 self.logger.error(e)
-            self.ready = True
+            self.coins_ready()
             time.sleep(self.update_rate)
 
     def get_ticker_range(self, symbols):
@@ -253,7 +276,7 @@ class BinanceUSExchange(Exchange):
                     self.coins[s].update(float(coin['lastPrice']), float(coin['priceChangePercent']))
             except Exception as e:
                 self.logger.error(e)
-            self.ready = True
+            self.coins_ready()
             time.sleep(self.update_rate)
 
     def get_ticker_range(self, symbols):

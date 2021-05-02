@@ -62,7 +62,6 @@ class PriceIndexer:
             except Exception as e:
                 self.logger.error("Error setting coin {} name {}".format(c.symbol, e))
         self.coins[symbol.lower()] = c
-        # self.info_exchange.get_coin_info('doge')
 
     def get_coin(self, symbol, wait=False, info=False):
         symbol = symbol.lower()
@@ -83,25 +82,35 @@ class PriceIndexer:
     def update_loop(self):
         while True:
             self.update_coins()
+            self.check_new_coins()
             time.sleep(self.update_rate)
 
-    def update_coins(self, wait=False):
+    def check_new_coins(self):
         try:
-            remaining = set(self.coins.keys())
-            for e in self.exchanges_by_priority:
+            c =  {e.name: e.get_new_coins() for e in self.exchanges_by_priority}
+            return {c: i for c, i in c.items() if i}
+        except Exception as e:
+            self.logger.error(e)
+
+    def clear_new_coins(self):
+        for e in self.exchanges_by_priority:
+            e.clear_new_coins()
+
+    def update_coins(self, wait=False):
+
+        remaining = set(self.coins.keys())
+        for e in self.exchanges_by_priority:
+            try:
                 e.update_list = remaining.intersection(set(e.coins.keys()))
                 remaining -= e.update_list
                 if wait:
                     self.get_coins_from_exchange(e)
                 else:
                     threading.Thread(target=self.get_coins_from_exchange, args=(e,)).start()
-        except Exception as e:
-            self.logger.error(e)
+            except Exception as e:
+                self.logger.error(e)
 
     def get_coins_from_exchange(self, exchange):
-        try:
-            updates = exchange.get_tickers(exchange.update_list)
-            for c, v in updates.items():
-                self.coins[c].update(v[0], v[1], exchange.name)
-        except Exception as e:
-            self.logger.error(e)
+        updates = exchange.get_tickers(exchange.update_list)
+        for c, v in updates.items():
+            self.coins[c].update(v[0], v[1], exchange.name)

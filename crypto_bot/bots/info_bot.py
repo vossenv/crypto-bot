@@ -107,7 +107,8 @@ class Countdown():
 
 class CryptoBot(Bot):
 
-    def __init__(self, token, name, avatar, countdowns, command_roles, indexer, *args, **kwargs):
+    def __init__(self, token, name, avatar, countdowns, new_coin_notifications, command_roles, indexer, *args,
+                 **kwargs):
         super(CryptoBot, self).__init__(*args, **kwargs)
         self.token = token
         self.name = name
@@ -116,6 +117,7 @@ class CryptoBot(Bot):
         command_roles = command_roles or []
         self.countdowns = [Countdown(**c, callback=self.message_channels) for c in countdowns]
         self.command_roles = {c.lower() for c in command_roles}
+        self.new_coin_notificaions = new_coin_notifications
         self.logger = logging.getLogger("{} bot".format(self.name))
         self.logger.info("Starting {} bot...".format(self.name))
         self.indexer = indexer
@@ -124,8 +126,24 @@ class CryptoBot(Bot):
         await self.update_nick()
         for c in self.countdowns:
             asyncio.ensure_future(c.run_loop())
+        if self.new_coin_notificaions:
+            asyncio.ensure_future(self.check_new_coins())
 
-    async def message_channels(self, msg, channels=None):
+    async def check_new_coins(self):
+        while True:
+            try:
+                new_coins_by_exch = self.indexer.check_new_coins()
+                for e, coins in new_coins_by_exch.items():
+                    for c in coins:
+                        info = self.indexer.get_coin(c, wait=True, info=True).info
+                        msg = "New coin {}/{} added to exchange: {}!".format(c.upper(), info['name'], e)
+                        self.logger.info(msg)
+                        await self.message_channels(msg, self.new_coin_notificaions['channels'])
+            except Exception as e:
+                self.logger.error("Error checking new coins: {}".format(e))
+            await asyncio.sleep(360)
+
+    async def message_channels(self, msg, channels):
         for c in channels:
             try:
                 await self.get_channel(c).send(msg)
@@ -154,12 +172,13 @@ class CryptoBot(Bot):
         await super().start(self.token)
 
 
-def create_bot(token, name, avatar, countdowns, command_roles, indexer):
+def create_bot(token, name, avatar, countdowns, new_coin_notifications, command_roles, indexer):
     bot = CryptoBot(command_prefix="!",
                     token=token,
                     name=name,
                     avatar=avatar,
                     countdowns=countdowns,
+                    new_coin_notifications=new_coin_notifications,
                     command_roles=command_roles,
                     indexer=indexer,
                     case_insensitive=True)
@@ -178,6 +197,34 @@ def create_bot(token, name, avatar, countdowns, command_roles, indexer):
                 await ctx.send("No soup for you!")
         except Exception as e:
             bot.logger.error("Error in commmand feed: {}".format(e))
+            await ctx.send("Error: {}".format(e))
+
+    @bot.command(name='new', help='Check recent coin adds - !new')
+    async def new(ctx):
+        try:
+            newc = bot.indexer.check_new_coins()
+            if not newc:
+                await ctx.send("No new coins found")
+                return
+            msg = "New coins by exchange: "
+            for e, coins in newc.items():
+                msg += "\n{}: ".format(e)
+                for c in coins:
+                    i = bot.indexer.get_coin(c, wait=True, info=True).info
+                    msg += "\n\t {}/{} on {}".format(
+                        c.upper(), i['name'] or c.upper(), coins[c].strftime("%m/%d/%Y"))
+            await ctx.send(msg)
+        except Exception as e:
+            bot.logger.error("Error in commmand new coins: {}".format(e))
+            await ctx.send("Error: {}".format(e))
+
+    @bot.command(name='clear_new', help='Clear recent adds - !clear_new')
+    async def clear_new(ctx):
+        try:
+            bot.indexer.clear_new_coins()
+            await ctx.send("Cleared new coin list succesfully")
+        except Exception as e:
+            bot.logger.error("Error in commmand new coins: {}".format(e))
             await ctx.send("Error: {}".format(e))
 
     @bot.command(name='ath', help='Get all time high - !ath')

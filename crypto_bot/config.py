@@ -39,10 +39,12 @@ class ConfigLoader:
             },
             'discord': {
                 'home_server': int,
+                'command_roles': Or([str], {str}),
                 Optional('price_bot_avatar'): str,
                 Optional('price_bots'): {str: str},
                 Optional('info_bots'): {str: {
                     'name': str,
+                    Optional('new_coin_notifications'): {'channels': [int]},
                     Optional('avatar'): str,
                     Optional('countdowns'): [{
                         'alert_time': str,
@@ -55,7 +57,7 @@ class ConfigLoader:
                         Optional('channels'): [int]
                     }]}
                 },
-                'command_roles': Or([str], {str})
+
             }
         })
 
