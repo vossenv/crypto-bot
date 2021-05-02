@@ -1,7 +1,6 @@
 # Init application
 import asyncio
 import sys
-from datetime import datetime, timedelta
 
 from crypto_bot.bots import price_bot, bot_globals, info_bot
 from crypto_bot.config import ConfigLoader, init_logger

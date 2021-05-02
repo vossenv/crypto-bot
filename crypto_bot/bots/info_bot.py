@@ -1,8 +1,8 @@
 import asyncio
 import logging
 import math
+import random
 from datetime import datetime, timedelta
-from random import random
 
 import discord
 import pytz
@@ -10,6 +10,7 @@ from dateutil.parser import parse, ParserError
 from discord.ext.commands import Bot, CommandNotFound
 
 from crypto_bot.bots import bot_globals
+from crypto_bot.resources.rules import RULES
 
 config_loader = None
 
@@ -191,10 +192,11 @@ def create_bot(token, name, avatar, countdowns, new_coin_notifications, command_
     @bot.command(name='feed', help='Get some soup - !feed')
     async def feed(ctx):
         try:
-            if random() >= 0.7:
+            if random.random() >= 0.7:
                 await ctx.send("You may eat today {}, Qapla'!".format(ctx.author.name))
             else:
-                await ctx.send("No soup for you!")
+                await ctx.send("https://tenor.com/view/seinfeld-soupnazi-nosoup-gif-5441633")
+                #await ctx.send("No soup for you!")
         except Exception as e:
             bot.logger.error("Error in commmand feed: {}".format(e))
             await ctx.send("Error: {}".format(e))
@@ -214,6 +216,30 @@ def create_bot(token, name, avatar, countdowns, new_coin_notifications, command_
                     msg += "\n\t {}/{} on {}".format(
                         c.upper(), i['name'] or c.upper(), coins[c].strftime("%m/%d/%Y"))
             await ctx.send(msg)
+        except Exception as e:
+            bot.logger.error("Error in commmand new coins: {}".format(e))
+            await ctx.send("Error: {}".format(e))
+
+    @bot.command(name='rule', help='Rule of acquisition - !rule or !rule #')
+    async def rule(ctx, num=None):
+        try:
+
+            num = str(num) if num else random.choice(list(RULES.keys()))
+
+            try:
+                if "." in num:
+                    raise ValueError
+                int(num)
+            except (ValueError, TypeError):
+                await ctx.send("{} is not a rule number, you fool!".format(num))
+                return
+
+            rule = RULES.get(num)
+            if rule:
+                await ctx.send("**Rule of Acquisition #{}**: {}".format(num, rule))
+            else:
+                await ctx.send("Sorry, rule #{} has never been revealed to us".format(num))
+
         except Exception as e:
             bot.logger.error("Error in commmand new coins: {}".format(e))
             await ctx.send("Error: {}".format(e))
