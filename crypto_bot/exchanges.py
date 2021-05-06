@@ -48,7 +48,7 @@ class Exchange:
                 continue
         return self.get_ticker_range(coins)
 
-    #
+
     def get_coin_def(self, symbol, raises=True):
         c = self.coins.get(symbol.lower())
         if not c and raises:

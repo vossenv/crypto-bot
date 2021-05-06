@@ -42,7 +42,7 @@ setup(name='crypto-bot',
           'ruamel.yaml',
           'python-dateutil',
           'pytz',
-          'python-twitter'
+          'python-twitter',
       ],
       extras_require={
           'setup': setup_deps,

@@ -115,6 +115,7 @@ class CryptoBot(Bot):
                  twitter_collector=None,
                  avatar=None,
                  countdowns=None,
+                 twitter_notifications=None,
                  new_coin_notifications=None,
                  command_roles=None,
                  *args,
@@ -127,20 +128,48 @@ class CryptoBot(Bot):
         command_roles = command_roles or ['everyone']
         self.countdowns = [Countdown(**c, callback=self.message_channels) for c in countdowns]
         self.command_roles = {c.lower() for c in command_roles}
-        self.new_coin_notificaions = new_coin_notifications
+        self.new_coin_notifications = new_coin_notifications
+        self.twitter_notifications = twitter_notifications
         self.logger = logging.getLogger("{} bot".format(self.name))
         self.logger.info("Starting {} bot...".format(self.name))
         self.indexer = indexer
         self.twitter_collector = twitter_collector
 
-        print()
+        if self.twitter_notifications and not self.twitter_collector:
+            raise AssertionError("Cannot use twitter notifications without twitter configuration")
 
     async def ready(self):
         await self.update_nick()
         for c in self.countdowns:
             asyncio.ensure_future(c.run_loop())
-        if self.new_coin_notificaions:
+        if self.new_coin_notifications:
             asyncio.ensure_future(self.check_new_coins())
+        if self.twitter_notifications:
+            asyncio.ensure_future(self.check_new_tweets())
+
+    async def check_new_tweets(self):
+
+        tweets = {u: None for u in self.twitter_notifications['users']}
+        channels = self.twitter_notifications['channels']
+        tag_ids = self.twitter_notifications.get('tags')
+        tags = " ".join(["<@{}>".format(t) for t in tag_ids]) if tag_ids else ''
+        startup = True
+        while True:
+            try:
+                for u, i in tweets.items():
+                    for k, s in enumerate(self.twitter_collector.get_latest(u, i)):
+                        if k == 0:
+                            tweets[u] = s.id
+                        if startup:
+                            continue
+                        tweet = "\n **New tweet: {} (@{})** {} \n https://twitter.com/{}/status/{}" \
+                            .format(s.user.name, u, tags, u, s.id)
+                        await self.message_channels(tweet, channels)
+                startup = False
+
+            except Exception as e:
+                self.logger.error("Warning: failed to fetch tweets for user {}: {}".format("", e))
+            await asyncio.sleep(self.twitter_collector.update_rate)
 
     async def check_new_coins(self):
         while True:
@@ -151,7 +180,7 @@ class CryptoBot(Bot):
                         info = self.indexer.get_coin(c, wait=True, info=True).info
                         msg = "New coin {}/{} added to exchange: {}!".format(c.upper(), info['name'], e)
                         self.logger.info(msg)
-                        await self.message_channels(msg, self.new_coin_notificaions['channels'])
+                        await self.message_channels(msg, self.new_coin_notifications['channels'])
             except Exception as e:
                 self.logger.error("Error checking new coins: {}".format(e))
             self.indexer.clear_new_coins()
@@ -193,6 +222,7 @@ def create_bot(config, indexer, twitter_collector):
                     avatar=config.get('avatar'),
                     countdowns=config.get('countdowns'),
                     new_coin_notifications=config.get('new_coin_notifications'),
+                    twitter_notifications=config.get('twitter_notifications'),
                     command_roles=config['command_roles'],
                     indexer=indexer,
                     twitter_collector=twitter_collector,
