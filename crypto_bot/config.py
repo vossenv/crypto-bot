@@ -37,6 +37,13 @@ class ConfigLoader:
                 'log_level': Or('info', 'debug', 'INFO', 'DEBUG'),
                 'update_rate': Or(float, int),
             },
+            Optional('twitter'): {
+                'access_token': str,
+                'access_token_secret': str,
+                'consumer_key': str,
+                'consumer_secret': str,
+                'update_rate': Or(int, float)
+            },
             'discord': {
                 'home_server': int,
                 'command_roles': Or([str], {str}),
@@ -46,6 +53,11 @@ class ConfigLoader:
                     'name': str,
                     Optional('new_coin_notifications'): {'channels': [int]},
                     Optional('avatar'): str,
+                    Optional('twitter_notifications'): {
+                        'users': [str],
+                        'channels': [int],
+                        Optional('tags'): [int]
+                    },
                     Optional('countdowns'): [{
                         'alert_time': str,
                         'name': str,

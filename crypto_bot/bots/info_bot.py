@@ -108,27 +108,68 @@ class Countdown():
 
 class CryptoBot(Bot):
 
-    def __init__(self, token, name, avatar, countdowns, new_coin_notifications, command_roles, indexer, *args,
+    def __init__(self,
+                 token,
+                 name,
+                 indexer,
+                 twitter_collector=None,
+                 avatar=None,
+                 countdowns=None,
+                 twitter_notifications=None,
+                 new_coin_notifications=None,
+                 command_roles=None,
+                 *args,
                  **kwargs):
         super(CryptoBot, self).__init__(*args, **kwargs)
         self.token = token
         self.name = name
         self.avatar = avatar
         countdowns = countdowns or []
-        command_roles = command_roles or []
+        command_roles = command_roles or ['everyone']
         self.countdowns = [Countdown(**c, callback=self.message_channels) for c in countdowns]
         self.command_roles = {c.lower() for c in command_roles}
-        self.new_coin_notificaions = new_coin_notifications
+        self.new_coin_notifications = new_coin_notifications
+        self.twitter_notifications = twitter_notifications
         self.logger = logging.getLogger("{} bot".format(self.name))
         self.logger.info("Starting {} bot...".format(self.name))
         self.indexer = indexer
+        self.twitter_collector = twitter_collector
+
+        if self.twitter_notifications and not self.twitter_collector:
+            raise AssertionError("Cannot use twitter notifications without twitter configuration")
 
     async def ready(self):
         await self.update_nick()
         for c in self.countdowns:
             asyncio.ensure_future(c.run_loop())
-        if self.new_coin_notificaions:
+        if self.new_coin_notifications:
             asyncio.ensure_future(self.check_new_coins())
+        if self.twitter_notifications:
+            asyncio.ensure_future(self.check_new_tweets())
+
+    async def check_new_tweets(self):
+
+        tweets = {u: None for u in self.twitter_notifications['users']}
+        channels = self.twitter_notifications['channels']
+        tag_ids = self.twitter_notifications.get('tags')
+        tags = " ".join(["<@{}>".format(t) for t in tag_ids]) if tag_ids else ''
+        startup = True
+        while True:
+            try:
+                for u, i in tweets.items():
+                    for k, s in enumerate(self.twitter_collector.get_latest(u, i)):
+                        if k == 0:
+                            tweets[u] = s.id
+                        if startup:
+                            continue
+                        tweet = "\n **New tweet: {} (@{})** {} \n https://twitter.com/{}/status/{}" \
+                            .format(s.user.name, u, tags, u, s.id)
+                        await self.message_channels(tweet, channels)
+                startup = False
+
+            except Exception as e:
+                self.logger.error("Warning: failed to fetch tweets for user {}: {}".format("", e))
+            await asyncio.sleep(self.twitter_collector.update_rate)
 
     async def check_new_coins(self):
         while True:
@@ -139,9 +180,10 @@ class CryptoBot(Bot):
                         info = self.indexer.get_coin(c, wait=True, info=True).info
                         msg = "New coin {}/{} added to exchange: {}!".format(c.upper(), info['name'], e)
                         self.logger.info(msg)
-                        await self.message_channels(msg, self.new_coin_notificaions['channels'])
+                        await self.message_channels(msg, self.new_coin_notifications['channels'])
             except Exception as e:
                 self.logger.error("Error checking new coins: {}".format(e))
+            self.indexer.clear_new_coins()
             await asyncio.sleep(360)
 
     async def message_channels(self, msg, channels):
@@ -173,15 +215,17 @@ class CryptoBot(Bot):
         await super().start(self.token)
 
 
-def create_bot(token, name, avatar, countdowns, new_coin_notifications, command_roles, indexer):
+def create_bot(config, indexer, twitter_collector):
     bot = CryptoBot(command_prefix="!",
-                    token=token,
-                    name=name,
-                    avatar=avatar,
-                    countdowns=countdowns,
-                    new_coin_notifications=new_coin_notifications,
-                    command_roles=command_roles,
+                    token=config['token'],
+                    name=config['name'],
+                    avatar=config.get('avatar'),
+                    countdowns=config.get('countdowns'),
+                    new_coin_notifications=config.get('new_coin_notifications'),
+                    twitter_notifications=config.get('twitter_notifications'),
+                    command_roles=config['command_roles'],
                     indexer=indexer,
+                    twitter_collector=twitter_collector,
                     case_insensitive=True)
 
     @bot.event
@@ -196,28 +240,9 @@ def create_bot(token, name, avatar, countdowns, new_coin_notifications, command_
                 await ctx.send("You may eat today {}, Qapla'!".format(ctx.author.name))
             else:
                 await ctx.send("https://tenor.com/view/seinfeld-soupnazi-nosoup-gif-5441633")
-                #await ctx.send("No soup for you!")
+                # await ctx.send("No soup for you!")
         except Exception as e:
             bot.logger.error("Error in commmand feed: {}".format(e))
-            await ctx.send("Error: {}".format(e))
-
-    @bot.command(name='new', help='Check recent coin adds - !new')
-    async def new(ctx):
-        try:
-            newc = bot.indexer.check_new_coins()
-            if not newc:
-                await ctx.send("No new coins found")
-                return
-            msg = "New coins by exchange: "
-            for e, coins in newc.items():
-                msg += "\n{}: ".format(e)
-                for c in coins:
-                    i = bot.indexer.get_coin(c, wait=True, info=True).info
-                    msg += "\n\t {}/{} on {}".format(
-                        c.upper(), i['name'] or c.upper(), coins[c].strftime("%m/%d/%Y"))
-            await ctx.send(msg)
-        except Exception as e:
-            bot.logger.error("Error in commmand new coins: {}".format(e))
             await ctx.send("Error: {}".format(e))
 
     @bot.command(name='rule', help='Rule of acquisition - !rule or !rule #')
@@ -240,15 +265,6 @@ def create_bot(token, name, avatar, countdowns, new_coin_notifications, command_
             else:
                 await ctx.send("Sorry, rule #{} has never been revealed to us".format(num))
 
-        except Exception as e:
-            bot.logger.error("Error in commmand new coins: {}".format(e))
-            await ctx.send("Error: {}".format(e))
-
-    @bot.command(name='clear_new', help='Clear recent adds - !clear_new')
-    async def clear_new(ctx):
-        try:
-            bot.indexer.clear_new_coins()
-            await ctx.send("Cleared new coin list succesfully")
         except Exception as e:
             bot.logger.error("Error in commmand new coins: {}".format(e))
             await ctx.send("Error: {}".format(e))

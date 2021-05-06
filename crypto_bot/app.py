@@ -6,6 +6,7 @@ from crypto_bot.bots import price_bot, bot_globals, info_bot
 from crypto_bot.config import ConfigLoader, init_logger
 from crypto_bot.exchanges import Exchange
 from crypto_bot.price_indexer import PriceIndexer
+from crypto_bot.twitter_collector import TwitterCollector
 
 try:
     cfg = sys.argv[1]
@@ -25,6 +26,8 @@ indexer.wait_exchanges()
 logger.info("Start Bots")
 price_bots = config['discord'].get('price_bots')
 info_bots = config['discord'].get('info_bots')
+twitter_cfg = config.get('twitter')
+twitter_collector = TwitterCollector(twitter_cfg) if twitter_cfg else None
 
 loop = asyncio.get_event_loop()
 bot_list = []
@@ -45,15 +48,10 @@ if price_bots:
 
 # Load info bots
 if info_bots:
-    for c, d in info_bots.items():
-        bot = info_bot.create_bot(
-            c,
-            d['name'],
-            d.get('avatar'),
-            d.get('countdowns'),
-            d.get('new_coin_notifications'),
-            config['discord']['command_roles'],
-            indexer)
+    for token, cfg in info_bots.items():
+        cfg['command_roles'] = config['discord']['command_roles']
+        cfg['token'] = token
+        bot = info_bot.create_bot(cfg, indexer, twitter_collector)
         loop.create_task(bot.start())
         bot_list.append(bot)
 
