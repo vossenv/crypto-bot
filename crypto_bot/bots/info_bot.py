@@ -164,7 +164,13 @@ class CryptoBot(Bot):
                             continue
                         tweet = "\n **New tweet: {} (@{})** {} \n https://twitter.com/{}/status/{}" \
                             .format(s.user.name, u, tags, u, s.id)
+
+                        if s.in_reply_to_status_id:
+                            tweet += "\n in reply to: https://twitter.com/{}/status/{}".format(
+                                s.in_reply_to_screen_name, s.in_reply_to_status_id)
+
                         await self.message_channels(tweet, channels)
+
                 startup = False
 
             except Exception as e:
