@@ -43,6 +43,7 @@ setup(name='crypto-bot',
           'python-dateutil',
           'pytz',
           'python-twitter',
+          'emoji'
       ],
       extras_require={
           'setup': setup_deps,

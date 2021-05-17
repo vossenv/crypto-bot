@@ -2,6 +2,8 @@ import logging
 import threading
 import time
 
+import emoji
+
 from crypto_bot.error import CoinNotFoundException
 
 
@@ -21,7 +23,8 @@ class Coin:
         self.price = float(price)
         try:
             self.perc = round(float(perc), 2)
-            self.direction = ("↑" if self.perc >= 0 else "↓")
+            self.direction = emoji.emojize(
+                ":green_circle:" if self.perc >= 0 else ":red_circle:", use_aliases=True)
         except ValueError:
             self.perc = perc or "N/A"
         if exchange:
