@@ -35,25 +35,32 @@ bot_list = []
 # Load price bots
 if price_bots:
     logger.info("Preload initial coins")
-    init_coins = price_bots.values()
+    init_coins = price_bots['instances'].values()
     for c in init_coins:
         indexer.add_new_coin(c)
 
-    for i, c in enumerate(price_bots.items()):
+    for i, c in enumerate(price_bots['instances'].items()):
         chat_id = str(i + 1) if i + 1 > 9 else "0{}".format(i + 1)
-        bot = price_bot.create_bot(*c, config['discord'].get('price_bot_avatar'),
-                                   chat_id, config['discord']['command_roles'], indexer)
+        bot = price_bot.create_bot(*c, price_bots.get('price_bot_avatar'),
+                                   chat_id, price_bots['command_roles'], indexer)
         loop.create_task(bot.start())
         bot_list.append(bot)
 
 # Load info bots
 if info_bots:
     for token, cfg in info_bots.items():
-        cfg['command_roles'] = config['discord']['command_roles']
+
         cfg['token'] = token
-        bot = info_bot.create_bot(cfg, indexer, twitter_collector)
-        loop.create_task(bot.start())
-        bot_list.append(bot)
+        countdowns = cfg.get('countdowns') or {}
+        cfg['countdowns'] = []
+        for c in countdowns:
+            alert = config['discord']['countdowns'][c]
+            alert['channels'] = countdowns[c]
+            cfg['countdowns'].append(alert)
+
+    bot = info_bot.create_bot(cfg, indexer, twitter_collector)
+    loop.create_task(bot.start())
+    bot_list.append(bot)
 
 indexer.run()
 loop.run_forever()

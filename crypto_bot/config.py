@@ -45,10 +45,12 @@ class ConfigLoader:
                 'update_rate': Or(int, float)
             },
             'discord': {
-                'home_server': int,
-                'command_roles': Or([str], {str}),
                 Optional('price_bot_avatar'): str,
-                Optional('price_bots'): {str: str},
+                Optional('price_bots'): {
+                    'home_server': int,
+                    'command_roles': Or([str], {str}),
+                    'instances': {str: str},
+                },
                 Optional('info_bots'): {str: {
                     'name': str,
                     Optional('new_coin_notifications'): {'channels': [int]},
@@ -58,7 +60,12 @@ class ConfigLoader:
                         'channels': [int],
                         Optional('tags'): [int]
                     },
-                    Optional('countdowns'): [{
+                    Optional('countdowns'):
+                        {str: [int]}
+                }
+                },
+                Optional('countdowns'): {
+                    str: {
                         'alert_time': str,
                         'name': str,
                         Optional('schedule'): Or(
@@ -67,9 +74,8 @@ class ConfigLoader:
                         Optional('alert_date'): str,
                         Optional('message'): str,
                         Optional('channels'): [int]
-                    }]}
-                },
-
+                    }
+                }
             }
         })
 
@@ -85,6 +91,11 @@ class ConfigLoader:
                 av = b.get('avatar')
                 if av:
                     paths.append(av)
+                if 'countdowns' in b:
+                    alerts = cfg['discord'].get('countdowns')
+                    for c in b['countdowns']:
+                        if c not in alerts:
+                            raise ConfigValidationError("Countdown '{}' for {} is not defined".format(c, b['name']))
 
         price_bots = cfg['discord'].get('price_bots')
         if price_bots:
