@@ -125,15 +125,22 @@ class ConfigLoader:
             raise ConfigValidationError(e.code) from e
 
     def save_config(self):
-        with open(self.config_path, 'w') as f:
-            yaml.dump(self.active_config, f)
+
+        if 'price_bots' in self.active_config['discord']:
+
+            with open(self.config_path, 'r') as f:
+                settings = yaml.load(f)
+                settings['discord']['price_bots']['instances'] = self.active_config['discord']['price_bots']['instances']
+
+            with open(self.config_path, 'w') as f:
+                yaml.dump(settings, f)
 
     def update_bot_coin(self, token, coin):
-        self.active_config['discord']['price_bots'][token] = coin.upper()
+        self.active_config['discord']['price_bots']['instances'][token] = coin.upper()
         self.save_config()
 
     def is_home_id(self, sid):
-        return self.active_config['discord']['home_server'] == sid
+        return self.active_config['discord']['price_bots']['home_server'] == sid
 
 
 class ConfigValidationError(Exception):

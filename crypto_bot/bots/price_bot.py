@@ -41,6 +41,7 @@ class CryptoPriceBot(Bot):
         symbol = str(symbol).lower()
         coin = self.indexer.get_coin(symbol, wait=True)
         self.associations[guild].update(symbol)
+        self.logger = logging.getLogger("{} bot".format(symbol.upper()))
         await self.update()
         return coin
 
