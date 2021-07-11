@@ -82,18 +82,8 @@ class InfoBot(BaseBot):
             await asyncio.sleep(360)
 
 
-def create_bot(config, indexer, twitter_collector):
-    bot = InfoBot(command_prefix="!",
-                  token=config['token'],
-                  name=config['name'],
-                  avatar=config.get('avatar'),
-                  countdowns=config['countdowns'],
-                  new_coin_notifications=config.get('new_coin_notifications'),
-                  twitter_notifications=config.get('twitter_notifications'),
-                  indexer=indexer,
-                  twitter_collector=twitter_collector,
-                  case_insensitive=True)
-
+def create_bot(**kwargs):
+    bot = InfoBot(command_prefix="!", **kwargs)
     bot_globals.add_base_commands(bot)
     bot_globals.add_price_commands(bot)
 
@@ -197,6 +187,5 @@ def create_bot(config, indexer, twitter_collector):
         except Exception as e:
             bot.logger.error("Error in commmand get_info: {}".format(e))
             await ctx.send("Error: {}".format(e))
-
 
     return bot

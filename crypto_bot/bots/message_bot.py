@@ -13,12 +13,8 @@ class MessageBot(BaseBot):
         await self.update_nick()
 
 
-def create_bot(config):
-    bot = MessageBot(command_prefix="!",
-                     token=config['token'],
-                     name=config['name'],
-                     avatar=config.get('avatar'),
-                     case_insensitive=True)
+def create_bot(**kwargs):
+    bot = MessageBot(command_prefix="!", **kwargs)
 
     bot_globals.add_price_commands(bot)
 

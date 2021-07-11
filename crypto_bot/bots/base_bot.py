@@ -12,7 +12,7 @@ class BaseBot(Bot):
                  avatar=None,
                  *args,
                  **kwargs):
-        super(BaseBot, self).__init__(*args, **kwargs)
+        super(BaseBot, self).__init__(case_insensitive=True, *args, **kwargs)
         self.token = token
         self.name = name
         self.avatar = avatar
@@ -52,4 +52,3 @@ class BaseBot(Bot):
 
     async def start(self):
         await super().start(self.token)
-

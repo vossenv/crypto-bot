@@ -41,8 +41,15 @@ if price_bots:
 
     for i, c in enumerate(price_bots['instances'].items()):
         chat_id = str(i + 1) if i + 1 > 9 else "0{}".format(i + 1)
-        bot = price_bot.create_bot(*c, price_bots.get('avatar'),
-                                   chat_id, price_bots['command_roles'], indexer)
+        bot = price_bot.create_bot(
+            token=c[0],
+            coin=c[1],
+            avatar=price_bots.get('avatar'),
+            chat_id=chat_id,
+            command_roles=price_bots['command_roles'],
+            indexer=indexer,
+        )
+
         loop.create_task(bot.start())
         bot_list.append(bot)
 
@@ -58,9 +65,19 @@ if info_bots:
             alert['channels'] = countdowns[c]
             cfg['countdowns'].append(alert)
 
-    bot = info_bot.create_bot(cfg, indexer, twitter_collector)
-    loop.create_task(bot.start())
-    bot_list.append(bot)
+        bot = info_bot.create_bot(
+            token=cfg['token'],
+            name=cfg['name'],
+            avatar=cfg.get('avatar'),
+            countdowns=cfg['countdowns'],
+            new_coin_notifications=cfg.get('new_coin_notifications'),
+            twitter_notifications=cfg.get('twitter_notifications'),
+            indexer=indexer,
+            twitter_collector=twitter_collector
+        )
+
+        loop.create_task(bot.start())
+        bot_list.append(bot)
 
 indexer.run()
 loop.run_forever()

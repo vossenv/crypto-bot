@@ -74,16 +74,8 @@ class PriceBot(BaseBot):
             time.sleep(60)
 
 
-def create_bot(token, coin, avatar, chat_id, command_roles, indexer):
-    bot = PriceBot(command_prefix="!{} ".format(chat_id.lstrip("0")),
-                   token=token,
-                   coin=coin,
-                   avatar=avatar,
-                   chat_id=chat_id,
-                   command_roles=command_roles,
-                   indexer=indexer,
-                   case_insensitive=True)
-
+def create_bot(**kwargs):
+    bot = PriceBot(command_prefix="!{} ".format(kwargs['chat_id'].lstrip("0")), **kwargs)
     bot_globals.add_base_commands(bot)
     bot_globals.add_price_commands(bot)
 
