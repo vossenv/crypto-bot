@@ -3,7 +3,7 @@ from datetime import datetime
 
 from crypto_bot.bots import bot_globals
 from crypto_bot.bots.base_bot import BaseBot
-from crypto_bot.bots.countdown import Countdown
+from crypto_bot.countdown import Countdown
 
 
 class InfoBot(BaseBot):
