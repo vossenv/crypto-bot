@@ -4,9 +4,10 @@ import threading
 import time
 
 import discord
-from discord.ext.commands import Bot, MissingRequiredArgument, CommandNotFound
+from discord.ext.commands import MissingRequiredArgument
 
 from crypto_bot.bots import bot_globals
+from crypto_bot.bots.base_bot import BaseBot
 from crypto_bot.error import CoinNotFoundException
 
 
@@ -22,34 +23,25 @@ class CoinAssociation:
         self.image = None
 
 
-class CryptoPriceBot(Bot):
+class PriceBot(BaseBot):
 
-    def __init__(self, token, coin, avatar, chat_id, command_roles, indexer, *args, **kwargs):
-        super(CryptoPriceBot, self).__init__(*args, **kwargs)
-        self.token = token
+    def __init__(self, coin, chat_id, command_roles, indexer, *args, **kwargs):
+        super(PriceBot, self).__init__(name=coin, *args, **kwargs)
         self.coin = coin.upper()
-        self.avatar = avatar
         self.chat_id = chat_id
         self.command_roles = {c.lower() for c in command_roles}
         self.associations = {}
-        self.logger = logging.getLogger("{} bot".format(coin))
-        self.logger.info("Starting {} bot...".format(self.coin))
         self.indexer = indexer
-
 
     async def set_coin(self, guild, symbol):
         symbol = str(symbol).lower()
         coin = self.indexer.get_coin(symbol, wait=True)
         self.associations[guild].update(symbol)
+        self.logger = logging.getLogger("{} bot".format(symbol.upper()))
         await self.update()
         return coin
 
     async def ready(self):
-        if self.avatar:
-            self.logger.info("Updating avatar to: {}".format(self.avatar))
-            with open(self.avatar, 'rb') as image:
-                await self.user.edit(avatar=image.read())
-                self.logger.info("Updated avatar")
         threading.Thread(target=self.update_memberships).start()
         await self.status_loop()
 
@@ -81,24 +73,11 @@ class CryptoPriceBot(Bot):
                     self.associations[g.id] = CoinAssociation(self.coin, m[0])
             time.sleep(60)
 
-    async def start(self):
-        await super().start(self.token)
 
-
-def create_bot(token, coin, avatar, chat_id, command_roles, indexer):
-    bot = CryptoPriceBot(command_prefix="!{} ".format(chat_id.lstrip("0")),
-                         token=token,
-                         coin=coin,
-                         avatar=avatar,
-                         chat_id=chat_id,
-                         command_roles=command_roles,
-                         indexer=indexer,
-                         case_insensitive=True)
-
-    @bot.event
-    async def on_ready():
-        bot.logger.info("#{} - {} is ready!".format(bot.chat_id, bot.coin))
-        await bot.ready()
+def create_bot(**kwargs):
+    bot = PriceBot(command_prefix="!{} ".format(kwargs['chat_id'].lstrip("0")), **kwargs)
+    bot_globals.add_base_commands(bot)
+    bot_globals.add_price_commands(bot)
 
     @bot.command(name='set', help='Sets a specific coin by symbol. Usage: ![#] set DOGE - # indicates bot number')
     async def set_coin(ctx, symbol):
@@ -127,18 +106,5 @@ def create_bot(token, coin, avatar, chat_id, command_roles, indexer):
         else:
             bot.logger.error("{} - {}".format(type(error), error.args[0]))
             raise error
-
-    @bot.command(name='price', help='Get a price. Usage: 1[#] price DOGE - # indicates bot number')
-    async def get_price(ctx, symbol):
-        await bot_globals.get_symbol_price(ctx, symbol)
-
-    @bot.event
-    async def on_command_error(ctx, error):
-        if isinstance(error, CommandNotFound):
-            if ctx.invoked_with.lower() in {'feed', 'info'}:
-                await ctx.send("Command moved - use !{} instead".format(ctx.invoked_with))
-                return
-            await ctx.send(error.args[0])
-        raise error
 
     return bot

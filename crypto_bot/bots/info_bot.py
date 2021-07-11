@@ -1,137 +1,26 @@
 import asyncio
-import logging
-import math
-import random
-from datetime import datetime, timedelta
-
-import discord
-import pytz
-from dateutil.parser import parse, ParserError
-from discord.ext.commands import Bot, CommandNotFound
+from datetime import datetime
 
 from crypto_bot.bots import bot_globals
-from crypto_bot.resources.rules import RULES
-
-config_loader = None
-
-
-class CoinAssociation:
-
-    def __init__(self, coin, membership):
-        self.coin = coin
-        self.update(coin)
-        self.membership = membership
-
-    def update(self, coin):
-        self.coin = coin.upper()
-        self.image = None
+from crypto_bot.bots.base_bot import BaseBot
+from crypto_bot.countdown import Countdown
 
 
-class Countdown():
-
-    def __init__(self, alert_time, name, schedule=None, callback=None, channels=None, alert_date=None, message=None):
-
-        self.alert_date = self.parse_date(alert_date).date() if alert_date else None
-        self.alert_time = self.parse_date(alert_time)
-        if self.alert_date is not None:
-            self.alert_time = datetime.combine(self.alert_date, self.alert_time.time())
-        else:
-            self.alert_time = datetime.combine(datetime.utcnow(), self.alert_time.time())
-        self.alert_time = pytz.timezone("UTC").localize(self.alert_time)
-        self.message = message
-        self.name = name
-        self.logger = logging.getLogger(name)
-        self.channels = channels
-        self.callback = callback
-        if not schedule:
-            self.notifications = {}
-        else:
-            if isinstance(schedule, list):
-                self.schedule = {a: None for a in schedule}
-            else:
-                self.schedule = dict(schedule)
-            self.notifications = self.create_notifications()
-        self.notifications[self.alert_time] = self.message
-
-    def create_notifications(self):
-        return {self.alert_time - timedelta(minutes=t): m for t, m in self.schedule.items()}
-
-    def parse_date(self, date_obj) -> datetime:
-        try:
-            date_obj = parse(date_obj, ignoretz=True)
-            return pytz.timezone("UTC").localize(date_obj)
-        except ParserError:
-            raise AssertionError(
-                "Invalid time format {} - please specific in 24 hour %H:%M:%S".format(date_obj))
-
-    def now(self) -> datetime:
-        return pytz.timezone("UTC").localize(datetime.utcnow())
-
-    def delta_to_event(self):
-        return round((self.alert_time - self.now()).total_seconds() / 60)
-
-    def get_alert_message(self, custom=None):
-        if custom:
-            return custom.replace('%%time%%', str(self.delta_to_event()))
-        return "**Alert!** {} minutes to {}!".format(self.delta_to_event(), self.name)
-
-    async def send_message(self, msg):
-        await self.callback(msg, self.channels)
-
-    async def run_loop(self):
-        n = self.notifications
-        while True:
-            now = self.now()
-            for t in list(n):
-                try:
-                    m = math.floor((now - t).total_seconds() / 60)
-                    if m < 0:
-                        continue
-                    if m == 0:
-                        msg = self.get_alert_message(n[t])
-                        self.logger.debug(msg)
-                        await self.send_message(msg)
-                    if not self.alert_date:
-                        new = t + timedelta(days=1)
-                        n[new] = n[t]
-                        if t == self.alert_time:
-                            self.alert_time = new
-                    else:
-                        self.logger.debug("Discarding old alert: {} {}".format(t, n[t]))
-                    n.pop(t)
-                except Exception as e:
-                    self.logger.error("Error sending notification: {}".format(e))
-            if not n:
-                break
-            await asyncio.sleep(5)
-
-
-class CryptoBot(Bot):
+class InfoBot(BaseBot):
 
     def __init__(self,
-                 token,
-                 name,
                  indexer,
                  twitter_collector=None,
-                 avatar=None,
                  countdowns=None,
                  twitter_notifications=None,
                  new_coin_notifications=None,
-                 command_roles=None,
                  *args,
                  **kwargs):
-        super(CryptoBot, self).__init__(*args, **kwargs)
-        self.token = token
-        self.name = name
-        self.avatar = avatar
+        super(InfoBot, self).__init__(*args, **kwargs)
         countdowns = countdowns or []
-        command_roles = command_roles or ['everyone']
         self.countdowns = [Countdown(**c, callback=self.message_channels) for c in countdowns]
-        self.command_roles = {c.lower() for c in command_roles}
         self.new_coin_notifications = new_coin_notifications
         self.twitter_notifications = twitter_notifications
-        self.logger = logging.getLogger("{} bot".format(self.name))
-        self.logger.info("Starting {} bot...".format(self.name))
         self.indexer = indexer
         self.twitter_collector = twitter_collector
 
@@ -192,88 +81,11 @@ class CryptoBot(Bot):
             self.indexer.clear_new_coins()
             await asyncio.sleep(360)
 
-    async def message_channels(self, msg, channels):
-        for c in channels:
-            try:
-                await self.get_channel(c).send(msg)
-            except Exception as e:
-                self.logger.error(e)
 
-    async def update_nick(self):
-        for g in self.guilds:
-            m = [u for u in g.members if u.id == self.user.id]
-            if not m:
-                self.logger.warning("No matching member id found for {}".format(g.id))
-                continue
-            elif len(m) > 1:
-                self.logger.warning("Multiple matches found for id for {} - using first match".format(g.id))
-
-            act = discord.Activity(type=discord.ActivityType.watching, name="you")
-            await m[0].edit(nick="{}".format(self.name))
-            await self.change_presence(status=discord.Status.online, activity=act)
-            if self.avatar:
-                self.logger.info("Updating avatar to: {}".format(self.avatar))
-                with open(self.avatar, 'rb') as image:
-                    await self.user.edit(avatar=image.read())
-                    self.logger.info("Updated avatar")
-
-    async def start(self):
-        await super().start(self.token)
-
-
-def create_bot(config, indexer, twitter_collector):
-    bot = CryptoBot(command_prefix="!",
-                    token=config['token'],
-                    name=config['name'],
-                    avatar=config.get('avatar'),
-                    countdowns=config.get('countdowns'),
-                    new_coin_notifications=config.get('new_coin_notifications'),
-                    twitter_notifications=config.get('twitter_notifications'),
-                    command_roles=config['command_roles'],
-                    indexer=indexer,
-                    twitter_collector=twitter_collector,
-                    case_insensitive=True)
-
-    @bot.event
-    async def on_ready():
-        bot.logger.info("{} is ready!".format(bot.name))
-        await bot.ready()
-
-    @bot.command(name='feed', help='Get some soup - !feed')
-    async def feed(ctx):
-        try:
-            if random.random() >= 0.7:
-                await ctx.send("You may eat today {}, Qapla'!".format(ctx.author.name))
-            else:
-                await ctx.send("https://tenor.com/view/seinfeld-soupnazi-nosoup-gif-5441633")
-                # await ctx.send("No soup for you!")
-        except Exception as e:
-            bot.logger.error("Error in commmand feed: {}".format(e))
-            await ctx.send("Error: {}".format(e))
-
-    @bot.command(name='rule', help='Rule of acquisition - !rule or !rule #')
-    async def rule(ctx, num=None):
-        try:
-
-            num = str(num) if num else random.choice(list(RULES.keys()))
-
-            try:
-                if "." in num:
-                    raise ValueError
-                int(num)
-            except (ValueError, TypeError):
-                await ctx.send("{} is not a rule number, you fool!".format(num))
-                return
-
-            rule = RULES.get(num)
-            if rule:
-                await ctx.send("**Rule of Acquisition #{}**: {}".format(num, rule))
-            else:
-                await ctx.send("Sorry, rule #{} has never been revealed to us".format(num))
-
-        except Exception as e:
-            bot.logger.error("Error in commmand new coins: {}".format(e))
-            await ctx.send("Error: {}".format(e))
+def create_bot(**kwargs):
+    bot = InfoBot(command_prefix="!", **kwargs)
+    bot_globals.add_base_commands(bot)
+    bot_globals.add_price_commands(bot)
 
     @bot.command(name='ath', help='Get all time high - !ath')
     async def ath(ctx, symbol):
@@ -375,19 +187,5 @@ def create_bot(config, indexer, twitter_collector):
         except Exception as e:
             bot.logger.error("Error in commmand get_info: {}".format(e))
             await ctx.send("Error: {}".format(e))
-
-    @bot.command(name='price', help='Get a price. Usage: !price doge')
-    async def get_price(ctx, symbol):
-        await bot_globals.get_symbol_price(ctx, symbol)
-
-    @bot.event
-    async def on_command_error(ctx, error):
-        if isinstance(error, CommandNotFound):
-            try:
-                int(ctx.invoked_with)
-                return
-            except Exception:
-                await ctx.send(error.args[0])
-        raise error
 
     return bot
