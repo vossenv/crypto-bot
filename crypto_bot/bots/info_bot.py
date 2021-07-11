@@ -1,41 +1,26 @@
 import asyncio
-import logging
-import random
 from datetime import datetime
 
-import discord
-from discord.ext.commands import Bot, CommandNotFound, MissingRequiredArgument
-
 from crypto_bot.bots import bot_globals
+from crypto_bot.bots.base_bot import BaseBot
 from crypto_bot.bots.countdown import Countdown
-from crypto_bot.resources.rules import RULES
-
-config_loader = None
 
 
-class CryptoBot(Bot):
+class InfoBot(BaseBot):
 
     def __init__(self,
-                 token,
-                 name,
                  indexer,
                  twitter_collector=None,
-                 avatar=None,
                  countdowns=None,
                  twitter_notifications=None,
                  new_coin_notifications=None,
                  *args,
                  **kwargs):
-        super(CryptoBot, self).__init__(*args, **kwargs)
-        self.token = token
-        self.name = name
-        self.avatar = avatar
+        super(InfoBot, self).__init__(*args, **kwargs)
         countdowns = countdowns or []
         self.countdowns = [Countdown(**c, callback=self.message_channels) for c in countdowns]
         self.new_coin_notifications = new_coin_notifications
         self.twitter_notifications = twitter_notifications
-        self.logger = logging.getLogger("{} bot".format(self.name))
-        self.logger.info("Starting {} bot...".format(self.name))
         self.indexer = indexer
         self.twitter_collector = twitter_collector
 
@@ -96,90 +81,21 @@ class CryptoBot(Bot):
             self.indexer.clear_new_coins()
             await asyncio.sleep(360)
 
-    async def message_channels(self, msg, channels):
-        for c in channels:
-            try:
-                z = self.get_channel(c)
-                if not z:
-                    raise AssertionError("Channel {} does not exist".format(c))
-                await z.send(msg)
-            except Exception as e:
-                self.logger.error(e)
-
-    async def update_nick(self):
-        for g in self.guilds:
-            m = [u for u in g.members if u.id == self.user.id]
-            if not m:
-                self.logger.warning("No matching member id found for {}".format(g.id))
-                continue
-            elif len(m) > 1:
-                self.logger.warning("Multiple matches found for id for {} - using first match".format(g.id))
-
-            act = discord.Activity(type=discord.ActivityType.watching, name="you")
-            await m[0].edit(nick="{}".format(self.name))
-            await self.change_presence(status=discord.Status.online, activity=act)
-            if self.avatar:
-                self.logger.info("Updating avatar to: {}".format(self.avatar))
-                with open(self.avatar, 'rb') as image:
-                    await self.user.edit(avatar=image.read())
-                    self.logger.info("Updated avatar")
-
-    async def start(self):
-        await super().start(self.token)
-
 
 def create_bot(config, indexer, twitter_collector):
-    bot = CryptoBot(command_prefix="!",
-                    token=config['token'],
-                    name=config['name'],
-                    avatar=config.get('avatar'),
-                    countdowns=config['countdowns'],
-                    new_coin_notifications=config.get('new_coin_notifications'),
-                    twitter_notifications=config.get('twitter_notifications'),
-                    indexer=indexer,
-                    twitter_collector=twitter_collector,
-                    case_insensitive=True)
+    bot = InfoBot(command_prefix="!",
+                  token=config['token'],
+                  name=config['name'],
+                  avatar=config.get('avatar'),
+                  countdowns=config['countdowns'],
+                  new_coin_notifications=config.get('new_coin_notifications'),
+                  twitter_notifications=config.get('twitter_notifications'),
+                  indexer=indexer,
+                  twitter_collector=twitter_collector,
+                  case_insensitive=True)
 
-    @bot.event
-    async def on_ready():
-        bot.logger.info("{} is ready!".format(bot.name))
-        await bot.ready()
-
-    @bot.command(name='feed', help='Get some soup - !feed')
-    async def feed(ctx):
-        try:
-            if random.random() >= 0.7:
-                await ctx.send("You may eat today {}, Qapla'!".format(ctx.author.name))
-            else:
-                await ctx.send("https://tenor.com/view/seinfeld-soupnazi-nosoup-gif-5441633")
-                # await ctx.send("No soup for you!")
-        except Exception as e:
-            bot.logger.error("Error in commmand feed: {}".format(e))
-            await ctx.send("Error: {}".format(e))
-
-    @bot.command(name='rule', help='Rule of acquisition - !rule or !rule #')
-    async def rule(ctx, num=None):
-        try:
-
-            num = str(num) if num else random.choice(list(RULES.keys()))
-
-            try:
-                if "." in num:
-                    raise ValueError
-                int(num)
-            except (ValueError, TypeError):
-                await ctx.send("{} is not a rule number, you fool!".format(num))
-                return
-
-            rule = RULES.get(num)
-            if rule:
-                await ctx.send("**Rule of Acquisition #{}**: {}".format(num, rule))
-            else:
-                await ctx.send("Sorry, rule #{} has never been revealed to us".format(num))
-
-        except Exception as e:
-            bot.logger.error("Error in commmand new coins: {}".format(e))
-            await ctx.send("Error: {}".format(e))
+    bot_globals.add_base_commands(bot)
+    bot_globals.add_price_commands(bot)
 
     @bot.command(name='ath', help='Get all time high - !ath')
     async def ath(ctx, symbol):
@@ -282,18 +198,5 @@ def create_bot(config, indexer, twitter_collector):
             bot.logger.error("Error in commmand get_info: {}".format(e))
             await ctx.send("Error: {}".format(e))
 
-    @bot.command(name='price', help='Get a price. Usage: !price doge')
-    async def get_price(ctx, symbol):
-        await bot_globals.get_symbol_price(ctx, symbol)
-
-    @bot.event
-    async def on_command_error(ctx, error):
-        if isinstance(error, CommandNotFound) or isinstance(error, MissingRequiredArgument):
-            try:
-                int(ctx.invoked_with)
-                return
-            except Exception:
-                await ctx.send(error.args[0])
-        raise error
 
     return bot
