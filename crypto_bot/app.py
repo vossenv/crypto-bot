@@ -41,7 +41,7 @@ if price_bots:
 
     for i, c in enumerate(price_bots['instances'].items()):
         chat_id = str(i + 1) if i + 1 > 9 else "0{}".format(i + 1)
-        bot = price_bot.create_bot(*c, price_bots.get('price_bot_avatar'),
+        bot = price_bot.create_bot(*c, price_bots.get('avatar'),
                                    chat_id, price_bots['command_roles'], indexer)
         loop.create_task(bot.start())
         bot_list.append(bot)

@@ -45,8 +45,8 @@ class ConfigLoader:
                 'update_rate': Or(int, float)
             },
             'discord': {
-                Optional('price_bot_avatar'): str,
                 Optional('price_bots'): {
+                    Optional('avatar'): str,
                     'home_server': int,
                     'command_roles': Or([str], {str}),
                     'instances': {str: str},
@@ -127,10 +127,10 @@ class ConfigLoader:
     def save_config(self):
 
         if 'price_bots' in self.active_config['discord']:
-
             with open(self.config_path, 'r') as f:
                 settings = yaml.load(f)
-                settings['discord']['price_bots']['instances'] = self.active_config['discord']['price_bots']['instances']
+                settings['discord']['price_bots']['instances'] = self.active_config['discord']['price_bots'][
+                    'instances']
 
             with open(self.config_path, 'w') as f:
                 yaml.dump(settings, f)
