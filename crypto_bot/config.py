@@ -19,7 +19,7 @@ class ConfigLoader:
 
     def config_schema(self) -> Schema:
         return Schema({
-            'exchanges': {
+            Optional('exchanges'): {
                 Optional('coingecko'): {
                     'priority': int,
                     Optional('coin_overrides'): {str: str}
@@ -62,8 +62,7 @@ class ConfigLoader:
                     },
                     Optional('countdowns'):
                         {str: [int]}
-                }
-                },
+                }},
                 Optional('countdowns'): {
                     str: {
                         'alert_time': str,
@@ -75,7 +74,15 @@ class ConfigLoader:
                         Optional('message'): str,
                         Optional('channels'): [int]
                     }
-                }
+                },
+                Optional('message_bots'): {str: {
+                    'name': str,
+                    Optional('avatar'): str,
+                    'channel_mappings': [{
+                        'read_channels': [int],
+                        'write_channels': [int]
+                    }],
+                }},
             }
         })
 
@@ -102,6 +109,8 @@ class ConfigLoader:
             av = cfg['discord'].get('price_bot_avatar')
             if av:
                 paths.append(av)
+        if info_bots or price_bots and not cfg.get('exchanges'):
+            raise ConfigValidationError("Must include exchanges section for price and info bots")
 
         for p in paths:
             if not os.path.exists(p):
@@ -114,13 +123,6 @@ class ConfigLoader:
         from schema import SchemaError
         try:
             self.config_schema().validate(raw_config)
-
-            price_bots = raw_config['discord'].get('price_bots')
-            info_bots = raw_config['discord'].get('info_bots')
-
-            if not price_bots and not info_bots:
-                raise ConfigValidationError("No bots were defined - please define at least 1 price or info bot")
-
         except SchemaError as e:
             raise ConfigValidationError(e.code) from e
 
