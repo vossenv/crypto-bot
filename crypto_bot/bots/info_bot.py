@@ -1,9 +1,11 @@
 import asyncio
+import random
 from datetime import datetime
 
 from crypto_bot.bots import bot_globals
 from crypto_bot.bots.base_bot import BaseBot
 from crypto_bot.countdown import Countdown
+from crypto_bot.resources.rules import RULES
 
 
 class InfoBot(BaseBot):
@@ -84,7 +86,7 @@ class InfoBot(BaseBot):
 
 def create_bot(**kwargs):
     bot = InfoBot(command_prefix="!", **kwargs)
-    bot_globals.add_base_commands(bot)
+    bot_globals.add_shared_setup(bot)
     bot_globals.add_price_commands(bot)
 
     @bot.command(name='ath', help='Get all time high - !ath')
@@ -186,6 +188,41 @@ def create_bot(**kwargs):
 
         except Exception as e:
             bot.logger.error("Error in commmand get_info: {}".format(e))
+            await ctx.send("Error: {}".format(e))
+
+    @bot.command(name='feed', help='Get some soup - !feed')
+    async def feed(ctx):
+        try:
+            if random.random() >= 0.7:
+                await ctx.send("You may eat today {}, Qapla'!".format(ctx.author.name))
+            else:
+                await ctx.send("https://tenor.com/view/seinfeld-soupnazi-nosoup-gif-5441633")
+        except Exception as e:
+            bot.logger.error("Error in commmand feed: {}".format(e))
+            await ctx.send("Error: {}".format(e))
+
+    @bot.command(name='rule', help='Rule of acquisition - !rule or !rule #')
+    async def rule(ctx, num=None):
+        try:
+
+            num = str(num) if num else random.choice(list(RULES.keys()))
+
+            try:
+                if "." in num:
+                    raise ValueError
+                int(num)
+            except (ValueError, TypeError):
+                await ctx.send("{} is not a rule number, you fool!".format(num))
+                return
+
+            rule = RULES.get(num)
+            if rule:
+                await ctx.send("**Rule of Acquisition #{}**: {}".format(num, rule))
+            else:
+                await ctx.send("Sorry, rule #{} has never been revealed to us".format(num))
+
+        except Exception as e:
+            bot.logger.error("Error in commmand new coins: {}".format(e))
             await ctx.send("Error: {}".format(e))
 
     return bot

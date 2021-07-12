@@ -109,7 +109,7 @@ class ConfigLoader:
             av = cfg['discord'].get('price_bot_avatar')
             if av:
                 paths.append(av)
-        if info_bots or price_bots and not cfg.get('exchanges'):
+        if (info_bots or price_bots) and not cfg.get('exchanges'):
             raise ConfigValidationError("Must include exchanges section for price and info bots")
 
         for p in paths:
