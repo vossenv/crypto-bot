@@ -76,7 +76,7 @@ class PriceBot(BaseBot):
 
 def create_bot(**kwargs):
     bot = PriceBot(command_prefix="!{} ".format(kwargs['chat_id'].lstrip("0")), **kwargs)
-    bot_globals.add_base_commands(bot)
+    bot_globals.add_shared_setup(bot)
     bot_globals.add_price_commands(bot)
 
     @bot.command(name='set', help='Sets a specific coin by symbol. Usage: ![#] set DOGE - # indicates bot number')

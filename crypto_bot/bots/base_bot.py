@@ -19,9 +19,6 @@ class BaseBot(Bot):
         self.logger = logging.getLogger("{} bot".format(self.name))
         self.logger.info("Starting {} bot...".format(self.name))
 
-    async def ready(self):
-        await self.update_nick()
-
     async def message_channels(self, msg, channels):
         for c in channels:
             try:
@@ -29,6 +26,7 @@ class BaseBot(Bot):
                 if not z:
                     raise AssertionError("Channel {} does not exist".format(c))
                 await z.send(msg)
+                self.logger.debug("Sent message to channel {}".format(c))
             except Exception as e:
                 self.logger.error(e)
 

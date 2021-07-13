@@ -1,11 +1,12 @@
 import logging.config
 import os
 
-from ruamel import yaml
+import yaml
+from ruamel import yaml as ryaml
 from schema import Schema, Or, Optional
 
-yaml = yaml.YAML()
-yaml.indent(sequence=4, offset=2)
+ryaml = ryaml.YAML()
+ryaml.indent(sequence=4, offset=2)
 
 from crypto_bot.resources import get_resource
 
@@ -79,8 +80,8 @@ class ConfigLoader:
                     'name': str,
                     Optional('avatar'): str,
                     'channel_mappings': [{
-                        'read_channels': [int],
-                        'write_channels': [int]
+                        'read_channels': Or([int], {'file': str, 'columns': Or(str, [str]), Optional('ignore'): Or(str, [str])}),
+                        'write_channels': Or([int], {'file': str, 'columns': Or(str, [str]), Optional('ignore'): Or(str, [str])}),
                     }],
                 }},
             }
@@ -88,7 +89,7 @@ class ConfigLoader:
 
     def load_config(self, path):
         with open(path) as f:
-            cfg = yaml.load(f)
+            cfg = yaml.safe_load(f)
         self._validate(cfg)
 
         paths = []
@@ -109,7 +110,7 @@ class ConfigLoader:
             av = cfg['discord'].get('price_bot_avatar')
             if av:
                 paths.append(av)
-        if info_bots or price_bots and not cfg.get('exchanges'):
+        if (info_bots or price_bots) and not cfg.get('exchanges'):
             raise ConfigValidationError("Must include exchanges section for price and info bots")
 
         for p in paths:
@@ -130,12 +131,12 @@ class ConfigLoader:
 
         if 'price_bots' in self.active_config['discord']:
             with open(self.config_path, 'r') as f:
-                settings = yaml.load(f)
+                settings = ryaml.load(f)
                 settings['discord']['price_bots']['instances'] = self.active_config['discord']['price_bots'][
                     'instances']
 
             with open(self.config_path, 'w') as f:
-                yaml.dump(settings, f)
+                ryaml.dump(settings, f)
 
     def update_bot_coin(self, token, coin):
         self.active_config['discord']['price_bots']['instances'][token] = coin.upper()
@@ -166,7 +167,7 @@ def init_logger(level):
     if not os.path.exists("logs"):
         os.mkdir("logs")
     with open(get_resource("logger_config.yaml")) as cfg:
-        data = yaml.load(cfg)
+        data = ryaml.load(cfg)
         data['loggers']['']['level'] = level.upper()
         logging.config.dictConfig(data)
         return logging.getLogger()
