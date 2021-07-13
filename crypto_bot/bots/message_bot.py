@@ -26,8 +26,6 @@ class MessageBot(BaseBot):
                     mc[c] = []
                 mc[c].extend(wc)
 
-        print()
-
     def process_mapping(self, mapping) -> list:
 
         if isinstance(mapping, list):
@@ -74,7 +72,7 @@ class MessageBot(BaseBot):
         content = str(message.content)
         if content.startswith(self.command_prefix) or content.startswith("?"):
             return
-            #cmd = content[1:].lower().strip()
+            # cmd = content[1:].lower().strip()
 
         from_id = message.channel.id
         if from_id in self.mappings_by_channel:
