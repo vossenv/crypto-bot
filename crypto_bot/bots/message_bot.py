@@ -1,3 +1,6 @@
+import csv
+import os
+
 from discord import Message
 
 from crypto_bot.bots import bot_globals
@@ -11,21 +14,55 @@ class MessageBot(BaseBot):
                  *args,
                  **kwargs):
         super(MessageBot, self).__init__(*args, **kwargs)
-
-        self.mappings = [dict(m) for m in mappings]
         self.mappings_by_channel = mc = {}
 
-        for m in self.mappings:
-            for c in m['read_channels']:
+        for m in mappings:
+
+            rc = self.process_mapping(m['read_channels'])
+            wc = self.process_mapping(m['write_channels'])
+
+            for c in rc:
                 if c not in mc:
                     mc[c] = []
-                mc[c].extend(m['write_channels'])
+                mc[c].extend(wc)
+
+    def process_mapping(self, mapping) -> list:
+
+        if isinstance(mapping, list):
+            return mapping
+
+        path = mapping['file']
+
+        if not os.path.exists(path):
+            raise FileNotFoundError("Path {} does not exist".format(path))
+        with open(path, "r", newline='') as f:
+            reader = csv.DictReader(f)
+            raw = [r for r in reader]
+            channels_by_header = {k: [] for k in reader.fieldnames}
+
+            for r in raw:
+                for i in r:
+                    channels_by_header[i].append(int(r[i]))
+        selected_channels = []
+
+        cols = mapping['columns']
+        cols = [cols] if isinstance(cols, str) else cols
+
+        for c in cols:
+            if c not in channels_by_header:
+                raise AssertionError("Column {} not found in csv: {}".format(c, path))
+            selected_channels.extend(channels_by_header[c])
+
+        return selected_channels
 
     async def ready(self):
         self.cmd_callbacks = {c.name: c.callback for c in self.commands}
         await self.update_nick()
 
     async def handle_message(self, message):
+
+        if message.author.id == self.user.id:
+            return
 
         content = str(message.content)
         if content.startswith(self.command_prefix):
