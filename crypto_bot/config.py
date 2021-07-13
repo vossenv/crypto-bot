@@ -80,8 +80,8 @@ class ConfigLoader:
                     'name': str,
                     Optional('avatar'): str,
                     'channel_mappings': [{
-                        'read_channels': Or([int], {'file': str, 'columns': Or(str, [str])}),
-                        'write_channels': Or([int], {'file': str, 'columns': Or(str, [str])}),
+                        'read_channels': Or([int], {'file': str, 'columns': Or(str, [str]), Optional('ignore'): Or(str, [str])}),
+                        'write_channels': Or([int], {'file': str, 'columns': Or(str, [str]), Optional('ignore'): Or(str, [str])}),
                     }],
                 }},
             }
@@ -89,7 +89,7 @@ class ConfigLoader:
 
     def load_config(self, path):
         with open(path) as f:
-            cfg = yaml.load(f)
+            cfg = yaml.safe_load(f)
         self._validate(cfg)
 
         paths = []

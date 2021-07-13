@@ -26,12 +26,17 @@ class MessageBot(BaseBot):
                     mc[c] = []
                 mc[c].extend(wc)
 
+        print()
+
     def process_mapping(self, mapping) -> list:
 
         if isinstance(mapping, list):
             return mapping
 
         path = mapping['file']
+
+        ignore = mapping.get("ignore") or []
+        ignore = [ignore] if isinstance(ignore, str) else ignore
 
         if not os.path.exists(path):
             raise FileNotFoundError("Path {} does not exist".format(path))
@@ -42,6 +47,8 @@ class MessageBot(BaseBot):
 
             for r in raw:
                 for i in r:
+                    if i in ignore:
+                        continue
                     channels_by_header[i].append(int(r[i]))
         selected_channels = []
 
@@ -65,8 +72,9 @@ class MessageBot(BaseBot):
             return
 
         content = str(message.content)
-        if content.startswith(self.command_prefix):
-            cmd = content[1:].lower().strip()
+        if content.startswith(self.command_prefix) or content.startswith("?"):
+            return
+            #cmd = content[1:].lower().strip()
 
         from_id = message.channel.id
         if from_id in self.mappings_by_channel:
