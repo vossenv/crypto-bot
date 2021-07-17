@@ -29,7 +29,7 @@ class PriceBot(BaseBot):
         super(PriceBot, self).__init__(name=coin, *args, **kwargs)
         self.coin = coin.upper()
         self.chat_id = chat_id
-        self.command_roles = {c.lower() for c in command_roles}
+        self.command_roles = self.parse_command_roles(command_roles)
         self.associations = {}
         self.indexer = indexer
 
@@ -81,8 +81,7 @@ def create_bot(**kwargs):
 
     @bot.command(name='set', help='Sets a specific coin by symbol. Usage: ![#] set DOGE - # indicates bot number')
     async def set_coin(ctx, symbol):
-        if not ctx.author.id == ctx.guild.owner_id and \
-                not {r.name.lstrip('@').lower() for r in ctx.author.roles} & bot.command_roles:
+        if not bot.user_role_allowed(ctx):
             await ctx.send("You do not have permission to use this function")
             return
         try:

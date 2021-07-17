@@ -48,12 +48,16 @@ class ConfigLoader:
             'discord': {
                 Optional('price_bots'): {
                     Optional('avatar'): str,
+                    Optional('command_roles'): Or([str], {str}),
                     'home_server': int,
-                    'command_roles': Or([str], {str}),
                     'instances': {str: str},
                 },
                 Optional('info_bots'): {str: {
                     'name': str,
+                    Optional('status'): {
+                        'activity': Or("playing","streaming","listening","watching","competing"),
+                        'name': object
+                    },
                     Optional('new_coin_notifications'): {'channels': [int]},
                     Optional('avatar'): str,
                     Optional('twitter_notifications'): {
@@ -79,6 +83,8 @@ class ConfigLoader:
                 Optional('message_bots'): {str: {
                     'name': str,
                     Optional('avatar'): str,
+                    Optional('command_roles'): Or([str], {str}),
+                    Optional('log_channel_mismatch'): Or(None, bool),
                     'channel_mappings': [{
                         'read_channels': Or([int], {'file': str, 'columns': Or(str, [str]), Optional('ignore'): Or(str, [str])}),
                         'write_channels': Or([int], {'file': str, 'columns': Or(str, [str]), Optional('ignore'): Or(str, [str])}),
@@ -89,7 +95,7 @@ class ConfigLoader:
 
     def load_config(self, path):
         with open(path) as f:
-            cfg = yaml.safe_load(f)
+            cfg = ryaml.load(f)
         self._validate(cfg)
 
         paths = []

@@ -11,10 +11,14 @@ class MessageBot(BaseBot):
 
     def __init__(self,
                  mappings,
+                 command_roles,
+                 log_channel_mismatch,
                  *args,
                  **kwargs):
         super(MessageBot, self).__init__(*args, **kwargs)
+        self.command_roles = self.parse_command_roles(command_roles)
         self.mappings_by_channel = mc = {}
+        self.log_channel_mismatch = log_channel_mismatch
 
         for m in mappings:
 
@@ -47,7 +51,11 @@ class MessageBot(BaseBot):
                 for i in r:
                     if i in ignore:
                         continue
-                    channels_by_header[i].append(int(r[i]))
+                    try:
+                        channels_by_header[i].append(int(r[i]))
+                    except ValueError:
+                        self.logger.debug("Skipping value {} in column {} as it is not an integer".format(r[i], i))
+
         selected_channels = []
 
         cols = mapping['columns']
@@ -66,17 +74,36 @@ class MessageBot(BaseBot):
 
     async def handle_message(self, message):
 
+        if not self.user_role_allowed(message):
+            return
+
         if message.author.id == self.user.id:
             return
 
         content = str(message.content)
-        if content.startswith(self.command_prefix) or content.startswith("?"):
+        if content.startswith(self.command_prefix):
             return
-            # cmd = content[1:].lower().strip()
+
+        # content
+        # cmd = content[1:].lower().strip()
+
+        for a in message.attachments:
+            content += "\n"
+            content += a.url
 
         from_id = message.channel.id
+        read_ch = message.channel.name
+        read_sv = message.guild.name
+
         if from_id in self.mappings_by_channel:
-            await self.message_channels(message.content, self.mappings_by_channel[from_id])
+            for m in self.mappings_by_channel[from_id]:
+                if self.log_channel_mismatch:
+                    write_ch = self.get_channel(m)
+                    if write_ch.name != read_ch:
+                        write_sv = self.get_channel(m).guild.name
+                        self.logger.warning("Channel name mismatch: Reading from '{}' on '{}' "
+                                            "and writing to '{}' on '{}'".format(read_ch, read_sv, write_ch, write_sv))
+            await self.message_channels(content, self.mappings_by_channel[from_id])
 
 
 def create_bot(**kwargs):

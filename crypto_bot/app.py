@@ -42,9 +42,10 @@ if price_bots or info_bots:
             bot = price_bot.create_bot(
                 token=c[0],
                 coin=c[1],
+                status=None,
                 avatar=price_bots.get('avatar'),
                 chat_id=chat_id,
-                command_roles=price_bots['command_roles'],
+                command_roles=price_bots.get('command_roles'),
                 indexer=bot_globals.indexer,
             )
 
@@ -69,6 +70,7 @@ if price_bots or info_bots:
             bot = info_bot.create_bot(
                 token=cfg['token'],
                 name=cfg['name'],
+                status=cfg.get('status'),
                 avatar=cfg.get('avatar'),
                 countdowns=cfg['countdowns'],
                 new_coin_notifications=cfg.get('new_coin_notifications'),
@@ -89,6 +91,9 @@ if msg_bots:
         bot = message_bot.create_bot(
             token=cfg['token'],
             name=cfg['name'],
+            command_roles=cfg.get('command_roles'),
+            log_channel_mismatch=cfg.get('log_channel_mismatch'),
+            status=cfg.get('status'),
             avatar=cfg.get('avatar'),
             mappings=cfg['channel_mappings']
         )
