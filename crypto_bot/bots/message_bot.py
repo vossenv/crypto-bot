@@ -84,9 +84,6 @@ class MessageBot(BaseBot):
         if content.startswith(self.command_prefix):
             return
 
-        # content
-        # cmd = content[1:].lower().strip()
-
         for a in message.attachments:
             content += "\n"
             content += a.url
@@ -94,15 +91,24 @@ class MessageBot(BaseBot):
         from_id = message.channel.id
         read_ch = message.channel.name
         read_sv = message.guild.name
-
         if from_id in self.mappings_by_channel:
             for m in self.mappings_by_channel[from_id]:
-                if self.log_channel_mismatch:
-                    write_ch = self.get_channel(m)
-                    if write_ch.name != read_ch:
-                        write_sv = self.get_channel(m).guild.name
-                        self.logger.warning("Channel name mismatch: Reading from '{}' on '{}' "
-                                            "and writing to '{}' on '{}'".format(read_ch, read_sv, write_ch, write_sv))
+                try:
+                    if self.log_channel_mismatch:
+                        write_ch = self.get_channel(m)
+                        if not write_ch:
+                            self.logger.warning(
+                                "Reading from '{}' on '{}' - target channel {} does not exist"
+                                    .format(read_ch, read_sv, m))
+                            continue
+
+                        if write_ch.name != read_ch:
+                            write_sv = self.get_channel(m).guild.name
+                            self.logger.warning("Channel name mismatch: Reading from '{}' on '{}' "
+                                                "and writing to '{}' on '{}'".format(read_ch, read_sv, write_ch,
+                                                                                     write_sv))
+                except Exception as e:
+                    self.logger.error("Error comparing channels: {}".format(e))
             await self.message_channels(content, self.mappings_by_channel[from_id])
 
 

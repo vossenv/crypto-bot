@@ -17,6 +17,7 @@ handlers:
         filename: logs/process.log
         when: midnight
         backupCount: 10
+        encoding: 'UTF-8'
 loggers:
     "":
         handlers:

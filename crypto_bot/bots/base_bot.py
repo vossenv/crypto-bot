@@ -32,7 +32,7 @@ class BaseBot(Bot):
                 self.logger.debug("Sent message to channel {}".format(c))
             except Exception as e:
                 info = "({}) on server {}".format(z.name, z.guild.name) if z else ""
-                self.logger.error("Failed sending to channel {} - {}".format(c, info, e))
+                self.logger.error("Failed sending to channel {} - {} due to {}".format(c, info, e))
 
     async def update_nick(self):
         for g in self.guilds:
