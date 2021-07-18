@@ -49,6 +49,7 @@ class ConfigLoader:
                 Optional('price_bots'): {
                     Optional('avatar'): str,
                     Optional('command_roles'): Or([str], {str}),
+                    Optional('use_coin_avatar'): Or(None, bool),
                     'home_server': int,
                     'instances': {str: str},
                 },

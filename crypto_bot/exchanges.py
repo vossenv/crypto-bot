@@ -48,7 +48,6 @@ class Exchange:
                 continue
         return self.get_ticker_range(coins)
 
-
     def get_coin_def(self, symbol, raises=True):
         c = self.coins.get(symbol.lower())
         if not c and raises:
@@ -215,6 +214,22 @@ class CoinGeckoExchange(Exchange):
             except Exception as e:
                 self.logger.error(e)
         return parsed_coins
+
+    def get_icon(self, symbol):
+        path = "/coins/{}"
+        c = self.coins.get(symbol.lower())
+        if not c:
+            raise AssertionError("Coin by name: {} was not found".format(symbol))
+        r = self.call(self.base_url + path.format(c.coin_id))
+        if 'image' in r:
+            try:
+                url = r['image']['thumb']
+                image = self.call(url, headers={'Accept': 'image/png'}, json=False)
+                if not image:
+                    raise AssertionError("No image data was returned")
+                return image
+            except Exception as e:
+                raise AssertionError("Failed retrieving the image for icon for symbol {} due to: {}".format(symbol, e))
 
 
 class KucoinExchange(Exchange):

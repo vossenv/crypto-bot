@@ -79,6 +79,10 @@ class PriceIndexer:
                 raise AssertionError("Coingecko API not present, info for {} not available".format(symbol))
         return self.coins[symbol]
 
+    def get_icon(self, symbol):
+        self.get_coin(symbol, wait=True)
+        return self.info_exchange.get_icon(symbol)
+
     def run(self):
         threading.Thread(target=self.update_loop).start()
 

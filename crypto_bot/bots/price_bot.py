@@ -25,11 +25,12 @@ class CoinAssociation:
 
 class PriceBot(BaseBot):
 
-    def __init__(self, coin, chat_id, command_roles, indexer, *args, **kwargs):
+    def __init__(self, coin, chat_id, command_roles, use_coin_avatar, indexer, *args, **kwargs):
         super(PriceBot, self).__init__(name=coin, *args, **kwargs)
         self.coin = coin.upper()
         self.chat_id = chat_id
         self.command_roles = self.parse_command_roles(command_roles)
+        self.use_coin_avatar = use_coin_avatar
         self.associations = {}
         self.indexer = indexer
 
@@ -46,6 +47,7 @@ class PriceBot(BaseBot):
         await self.status_loop()
 
     async def status_loop(self):
+        await self.update_coin_icon(self.coin)
         while True:
             await self.update()
             await asyncio.sleep(0.5)
@@ -59,6 +61,14 @@ class PriceBot(BaseBot):
                 await self.change_presence(status=discord.Status.online, activity=act)
             except Exception as e:
                 self.logger.error(e)
+
+    async def update_coin_icon(self, symbol):
+        if self.use_coin_avatar:
+            try:
+                av = self.indexer.get_icon(symbol)
+                await self.user.edit(avatar=av)
+            except Exception as e:
+                self.logger.error("Failed to set icon: {}".format(e))
 
     def update_memberships(self):
         while True:
@@ -90,6 +100,7 @@ def create_bot(**kwargs):
             cl = bot_globals.config_loader
             if cl.is_home_id(ctx.guild.id):
                 cl.update_bot_coin(bot.token, symbol)
+                await bot.update_coin_icon(symbol)
             await ctx.send("Set bot #{} to {} - {} successfully! - indexed from {}"
                            .format(bot.chat_id, c.symbol.upper(), c.name or c.coin_id, c.last_exchange))
         except CoinNotFoundException as e:

@@ -46,6 +46,7 @@ if price_bots or info_bots:
                 avatar=price_bots.get('avatar'),
                 chat_id=chat_id,
                 command_roles=price_bots.get('command_roles'),
+                use_coin_avatar=price_bots.get('use_coin_avatar'),
                 indexer=bot_globals.indexer,
             )
 
