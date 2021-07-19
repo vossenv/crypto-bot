@@ -29,8 +29,9 @@ class BaseBot(Bot):
                 if not z:
                     raise AssertionError("Channel {} does not exist".format(c))
                 await z.send(msg)
-                self.logger.debug("Sent message to channel {}".format(c))
+                self.logger.debug("Sent message '{}...' to channel {} ({}) on {}".format(msg[:20], z.name, c, z.guild.name))
             except Exception as e:
+
                 info = "({}) on server {}".format(z.name, z.guild.name) if z else ""
                 self.logger.error("Failed sending to channel {} - {} due to {}".format(c, info, e))
 
