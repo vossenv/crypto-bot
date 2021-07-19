@@ -54,7 +54,6 @@ class BaseBot(Bot):
                     self.logger.info("Updated avatar")
 
     def user_role_allowed(self, ctx):
-
         if not self.command_roles:
             return True
 

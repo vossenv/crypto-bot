@@ -68,7 +68,26 @@ class MessageBot(BaseBot):
 
         return selected_channels
 
+    def map_channels(self):
+
+        selected = ['Server','ᴡᴇʟᴄᴏᴍᴇ','ʙᴜʟʟᴇᴛɪɴ','ᴀғғɪʟɪᴀᴛᴇs','ɢᴇɴᴇʀᴀʟ','ʙᴏɴᴇs💀ᴛᴇᴄʜɴɪᴄᴀʟ',
+                    'ᴇᴅᴜᴄᴀᴛɪᴏɴ','ɴᴇᴡs','ᴛᴡᴇᴇᴛ🐦ᴡᴀᴛᴄʜ','ᴄᴏɪɴ-ᴀʟᴇʀᴛs','ᴅᴏɴᴀᴛᴇ-ᴄʀʏᴘᴛᴏ','ᴅᴏɴᴀᴛᴇ-ғɪᴀᴛ']
+        guilds = []
+        for g in self.guilds:
+            data = {c.name:c.id for c in g.channels if c.name in selected}
+            data['Server'] = g.name
+            guilds.append(data)
+
+        with open('channel_data.csv', mode='w', newline='', encoding="utf-8") as csv_file:
+            writer = csv.DictWriter(csv_file, fieldnames=selected)
+            writer.writeheader()
+            for w in guilds:
+                writer.writerow(w)
+        self.logger.info("Wrote {} rows".format(len(guilds)))
+
+
     async def ready(self):
+        #self.map_channels()
         self.cmd_callbacks = {c.name: c.callback for c in self.commands}
         await self.update_nick()
 
