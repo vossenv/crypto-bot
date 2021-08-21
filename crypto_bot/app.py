@@ -33,25 +33,29 @@ if price_bots or info_bots:
     # Load price bots
     if price_bots:
         logger.info("Preload initial coins")
-        init_coins = price_bots['instances'].values()
-        for c in init_coins:
-            bot_globals.indexer.add_new_coin(c)
 
-        for i, c in enumerate(price_bots['instances'].items()):
-            chat_id = str(i + 1) if i + 1 > 9 else "0{}".format(i + 1)
-            bot = price_bot.create_bot(
-                token=c[0],
-                coin=c[1],
-                status=None,
-                avatar=price_bots.get('avatar'),
-                chat_id=chat_id,
-                command_roles=price_bots.get('command_roles'),
-                use_coin_avatar=price_bots.get('use_coin_avatar'),
-                indexer=bot_globals.indexer,
-            )
+        for sid, server in price_bots.items():
+            # init_coins = server['instances'].values()
+            # for c in init_coins:
+            #     bot_globals.indexer.add_new_coin(c)
 
-            loop.create_task(bot.start())
-            bot_list.append(bot)
+            for i, c in enumerate(server['instances'].items()):
+                bot_globals.indexer.add_new_coin(c[1])
+                chat_id = str(i + 1) if i + 1 > 9 else "0{}".format(i + 1)
+                bot = price_bot.create_bot(
+                    token=c[0],
+                    coin=c[1],
+                    status=None,
+                    avatar=server.get('avatar'),
+                    chat_id=chat_id,
+                    command_roles=server.get('command_roles'),
+                    use_coin_avatar=server.get('use_coin_avatar'),
+                    home_id=sid,
+                    indexer=bot_globals.indexer,
+                )
+
+                loop.create_task(bot.start())
+                bot_list.append(bot)
 
     # Load info bots
     if info_bots:

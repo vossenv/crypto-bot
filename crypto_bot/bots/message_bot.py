@@ -93,7 +93,7 @@ class MessageBot(BaseBot):
 
     async def handle_message(self, message):
 
-        if not self.user_role_allowed(message):
+        if not message.webhook_id and not self.user_role_allowed(message):
             return
 
         if message.author.id == self.user.id:

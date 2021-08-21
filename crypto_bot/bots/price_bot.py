@@ -3,7 +3,9 @@ import logging
 import threading
 import time
 
+
 import discord
+from discord import HTTPException
 from discord.ext.commands import MissingRequiredArgument
 
 from crypto_bot.bots import bot_globals
@@ -25,12 +27,13 @@ class CoinAssociation:
 
 class PriceBot(BaseBot):
 
-    def __init__(self, coin, chat_id, command_roles, use_coin_avatar, indexer, *args, **kwargs):
+    def __init__(self, coin, chat_id, command_roles, use_coin_avatar, home_id, indexer, *args, **kwargs):
         super(PriceBot, self).__init__(name=coin, *args, **kwargs)
         self.coin = coin.upper()
         self.chat_id = chat_id
         self.command_roles = self.parse_command_roles(command_roles)
         self.use_coin_avatar = use_coin_avatar
+        self.home_id = home_id
         self.associations = {}
         self.indexer = indexer
 
@@ -50,7 +53,11 @@ class PriceBot(BaseBot):
         await self.update_coin_icon(self.coin)
         while True:
             await self.update()
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(5)
+
+    async def log_send(self, ctx, msg):
+        await ctx.send(msg)
+        self.logger.info("{}: {}".format(ctx.guild.name, msg))
 
     async def update(self):
         for g, a in self.associations.items():
@@ -59,14 +66,19 @@ class PriceBot(BaseBot):
                 act = discord.Activity(type=discord.ActivityType.watching, name="{0} % {1}".format(c.perc, c.direction))
                 await a.membership.edit(nick="!{0} {1} {2}".format(self.chat_id, a.coin, c.price))
                 await self.change_presence(status=discord.Status.online, activity=act)
+                await asyncio.sleep(0.25)
             except Exception as e:
-                self.logger.error(e)
+                if isinstance(e, HTTPException):
+                    self.logger.error("{}: {}".format(e, e.response.url))
+                else:
+                    self.logger.error(e)
 
     async def update_coin_icon(self, symbol):
         if self.use_coin_avatar:
             try:
                 av = self.indexer.get_icon(symbol)
                 await self.user.edit(avatar=av)
+                self.logger.info("Set icon for {} successfully!".format(symbol))
             except Exception as e:
                 self.logger.error("Failed to set icon: {}".format(e))
 
@@ -95,13 +107,13 @@ def create_bot(**kwargs):
             await ctx.send("You do not have permission to use this function")
             return
         try:
-            await ctx.send("Attempting to set coin to {}".format(symbol))
+            await bot.log_send(ctx, "Attempting to set coin to {}".format(symbol))
             c = await bot.set_coin(ctx.guild.id, symbol)
             cl = bot_globals.config_loader
-            if cl.is_home_id(ctx.guild.id):
-                cl.update_bot_coin(bot.token, symbol)
+            if bot.home_id == ctx.guild.id:
+                cl.persist_coin(ctx.guild.id, bot.token, symbol)
                 await bot.update_coin_icon(symbol)
-            await ctx.send("Set bot #{} to {} - {} successfully! - indexed from {}"
+            await bot.log_send(ctx, "Set bot #{} to {} - {} successfully! - indexed from {}"
                            .format(bot.chat_id, c.symbol.upper(), c.name or c.coin_id, c.last_exchange))
         except CoinNotFoundException as e:
             await ctx.send(e)
