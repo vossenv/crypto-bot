@@ -71,7 +71,7 @@ class MessageBot(BaseBot):
     def map_channels(self):
 
         selected = ['Server','ᴡᴇʟᴄᴏᴍᴇ','ʙᴜʟʟᴇᴛɪɴ','ᴀғғɪʟɪᴀᴛᴇs','ɢᴇɴᴇʀᴀʟ','ʙᴏɴᴇs💀ᴛᴇᴄʜɴɪᴄᴀʟ',
-                    'ᴇᴅᴜᴄᴀᴛɪᴏɴ','ɴᴇᴡs','ᴛᴡᴇᴇᴛ🐦ᴡᴀᴛᴄʜ','ᴄᴏɪɴ-ᴀʟᴇʀᴛs','ᴅᴏɴᴀᴛᴇ-ᴄʀʏᴘᴛᴏ','ᴅᴏɴᴀᴛᴇ-ғɪᴀᴛ']
+                    'ᴇᴅᴜᴄᴀᴛɪᴏɴ','ɴᴇᴡs','ᴛᴡᴇᴇᴛ🐦ᴡᴀᴛᴄʜ','ᴄᴏɪɴ-ᴀʟᴇʀᴛs','ᴅᴏɴᴀᴛᴇ-ᴄʀʏᴘᴛᴏ','ᴅᴏɴᴀᴛᴇ-ғɪᴀᴛ','ᴇxᴄʜᴀɴɢᴇs']
         guilds = []
         for g in self.guilds:
             data = {c.name:c.id for c in g.channels if c.name in selected}
