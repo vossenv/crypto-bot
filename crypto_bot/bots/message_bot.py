@@ -1,6 +1,7 @@
 import csv
 import os
 
+import yaml
 from discord import Message
 
 from crypto_bot.bots import bot_globals
@@ -69,22 +70,35 @@ class MessageBot(BaseBot):
         return selected_channels
 
     def map_channels(self):
+       # z = self.get_channel(866469750296412260).name
 
-        selected = ['Server','ᴡᴇʟᴄᴏᴍᴇ','ʙᴜʟʟᴇᴛɪɴ','ᴀғғɪʟɪᴀᴛᴇs','ɢᴇɴᴇʀᴀʟ','ʙᴏɴᴇs💀ᴛᴇᴄʜɴɪᴄᴀʟ',
-                    'ᴇᴅᴜᴄᴀᴛɪᴏɴ','ɴᴇᴡs','ᴛᴡᴇᴇᴛ🐦ᴡᴀᴛᴄʜ','ᴄᴏɪɴ-ᴀʟᴇʀᴛs','ᴅᴏɴᴀᴛᴇ-ᴄʀʏᴘᴛᴏ','ᴅᴏɴᴀᴛᴇ-ғɪᴀᴛ','ᴇxᴄʜᴀɴɢᴇs']
+        with open('channel_names.yml', encoding="utf-8") as f:
+            ch = yaml.load(f)
+
+        selected = ch['channels']
+        ignore = ch['ignore']
+
         guilds = []
         for g in self.guilds:
-            data = {c.name:c.id for c in g.channels if c.name in selected}
-            data['Server'] = g.name
+
+            if g.name.lower() in ignore:
+                continue
+
+            data = {}
+            for c in g.channels:
+                for ch, names in selected.items():
+                    if c.name in names:
+                     data[ch] = c.id
+
+            data['server'] = g.name
             guilds.append(data)
 
         with open('channel_data.csv', mode='w', newline='', encoding="utf-8") as csv_file:
-            writer = csv.DictWriter(csv_file, fieldnames=selected)
+            writer = csv.DictWriter(csv_file, fieldnames=selected.keys())
             writer.writeheader()
             for w in guilds:
                 writer.writerow(w)
         self.logger.info("Wrote {} rows".format(len(guilds)))
-
 
     async def ready(self):
         #self.map_channels()
