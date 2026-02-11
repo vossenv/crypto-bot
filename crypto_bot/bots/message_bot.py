@@ -106,7 +106,6 @@ class MessageBot(BaseBot):
         await self.update_nick()
 
     async def handle_message(self, message):
-
         if not message.webhook_id and not self.user_role_allowed(message):
             return
 

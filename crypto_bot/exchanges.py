@@ -259,6 +259,9 @@ class KucoinExchange(Exchange):
             except Exception as e:
                 self.logger.error(e)
             self.coins_ready()
+            with open('coins.txt', 'w') as f:
+                for k in sorted(self.coins):
+                    f.write('KUCOIN:' + k.upper() + 'USDT,')
             time.sleep(self.update_rate)
 
     def get_ticker_range(self, symbols):
